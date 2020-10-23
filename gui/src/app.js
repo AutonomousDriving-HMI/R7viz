@@ -44,10 +44,10 @@ if (!server) {
   server = "localhost";
 }
 if (!mapboxToken) {
-  mapboxToken = "";
+  mapboxToken = "pk.eyJ1IjoiZ3dhbmdyeXVsIiwiYSI6ImNrZmRwcnMzMjFyeDQyeXFneXE3aHBid3kifQ.urnQG35_4DuT7D5lF5sBHA";
 }
 if (!mapStyleRef) {
-  mapStyleRef = 'mapbox://styles/uberdata/cjfxhlikmaj1b2soyzevnywgs';
+  mapStyleRef = 'mapbox://styles/gwangryul/ckgkh9m6v0om719o4p1n3lba9';
 }
 
 // get camera image directly from rosbridge instead of xviz
