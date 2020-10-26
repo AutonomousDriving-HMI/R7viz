@@ -62,14 +62,12 @@ function connectionId() {
 function addLocationToCache(lat, lng, alt, heading, time) {
 
     _locationCache = {
-        latitude: lat - 8.078595,
-        longitude: lng + 207.919656,
+        latitude: lat,
+        longitude: lng,
         altitude: alt,
         timestamp: time,
         heading: 1.57+heading//90 degree of difference between xviz frame
-        
     };
-    console.log("latitude : " , lat - 8.078595 , "longitude :" , lng + 207.919656)
     //console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
 }
 

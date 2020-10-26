@@ -1,9 +1,12 @@
 const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
+//const sharp = require('@sharp');
 
 let car_heading_utm_north = 0; // global variable that stores heading/orientation of the car
 let car_pos_utm = null; // global variable that stores car location in UTM
 let plannedPath = null; // global variable that hold an array of planned path
+
+let pointcloud = null;
 
 const rosBridgeClient = new ROSLIB.Ros({
     url : 'ws://localhost:9090'
@@ -12,7 +15,8 @@ const rosBridgeClient = new ROSLIB.Ros({
 // for car location in latitude and longitude
 const listener = new ROSLIB.Topic({
     ros : rosBridgeClient,
-    name : '/navsat/fix'
+    //name : '/navsat/fix'
+    name : '/vehicle/gps/fix' 
 });
 
 // for planned path in UTM coordinate
@@ -21,40 +25,39 @@ const listener2 = new ROSLIB.Topic({
     name : '/PathPlanner/desired_path'
 });
 
+
 // for camera image
-/*const listener3 = new ROSLIB.Topic({
+const listener3 = new ROSLIB.Topic({
   ros : rosBridgeClient,
-  name : '/blackfly/image_color/compressed'
-});*/
+  name : '/usb_cam/image_raw'
+});
 
 // for car location in UTM coordinate and orientation
 const listener4 = new ROSLIB.Topic({
   ros : rosBridgeClient,
-  name : '/navsat/odom'//there is another topic '/imu/data' that has orientation
+  //name : '/navsat/odom'//there is another topic '/imu/data' that has orientation
+  //name : '/imu/data'
+  name : '/vehicle/imu/data_raw '
 });
 
 // for obstacle information
+/*
 const listener5 = new ROSLIB.Topic({
     ros : rosBridgeClient,
     name : '/planner_obstacles'
 });
+*/
+const listener6 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/points_raw'
+});
 
 xvizServer.startListenOn(8081);
 
-function gracefulShutdown() {
-    console.log("shutting down rosbridge-xviz-connector");
-    listener.unsubscribe();
-    listener2.unsubscribe();
-    //listener3.unsubscribe();
-    listener4.unsubscribe();
-    listener5.unsubscribe();
-    rosBridgeClient.close();
-    xvizServer.close();
-}
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);      //is not supported on Windows
+process.on('SIGINT', gracefulShutdown);       //ctrl c
 
-rosBridgeClient.on('connection', function() {
+rosBridgeClient.on('connection', function() {     //event name and function
     console.log('Connected to rosbridge websocket server.');
 });
 
@@ -67,26 +70,45 @@ rosBridgeClient.on('close', function() {
 });
 
 
-
-
 listener.subscribe(function(message) {
-    // var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
+    //var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
+    //////let let is chanagble not const////
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
+    // why timestamp object is only $ object?
+    // reference
+    console.log('GPS data test')
+    console.log(message.latitude, message.longitude, message.altitude,parseFloat(timestamp));
     xvizServer.updateLocation(message.latitude, message.longitude, message.altitude, car_heading_utm_north, parseFloat(timestamp));
+    
 });
 listener2.subscribe(function(message) {
     plannedPath = message.poses;
 });
-/*listener3.subscribe(function(message) {
+/*
+listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
-  xvizServer.updateCameraImage(message.data);
-});*/
+  const imgData =  sharp(message.data, {raw: {
+    width,
+    height,
+    channel: 3
+    }
+  })
+  //xvizServer.updateCameraImage(message.data);
+});
+*/
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
-    let orientation = message.pose.pose.orientation;
+    //let orientation = message.pose.pose.orientation;
+    let orientation = message.orientation;
+    console.log('IMU data orientation');
+    console.log(orientation);
+    sleep(1000);
     // quaternion to heading (z component of euler angle) ref: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
     // positive heading denotes rotating from north to west; while zero means north
     car_heading_utm_north = Math.atan2( 2*( orientation.z * orientation.w + orientation.x * orientation.y), 1 - 2 * ( orientation.z * orientation.z + orientation.y * orientation.y ));
+    console.log('car_heading_utm_north');
+    console.log(car_heading_utm_north);
+    /*
     if (plannedPath) {
         // if plannedPath is a valid array, then find the trajectory to display 
         // that within 100m of the car's current location in front
@@ -96,19 +118,20 @@ listener4.subscribe(function (message) {
             if ( distance(plannedPath[i].pose.position, car_pos_utm) < 100 
                 && isInFront(car_pos_utm, car_heading_utm_north, plannedPath[i].pose.position) ) {
                 trajectory.push([
-                    plannedPath[i].pose.position.x - car_pos_utm.x,
-                    plannedPath[i].pose.position.y - car_pos_utm.y,
-                    0
-                ]);
+                    plannedPath[i].pose.position.x - car_pos_utm.x, plannedPath[i].pose.position.y - car_pos_utm.y, 0 ]
+                );
             }
         }
+
         if (trajectory.length > 0) {
             xvizServer.updateCarPath(trajectory);
         } else {
             xvizServer.updateCarPath(null);
         }
     }
+    */
 });
+/*
 listener5.subscribe(function (message) {
     obstacles = [];
     for (i=0;i<message.markers.length;i++){
@@ -127,6 +150,14 @@ listener5.subscribe(function (message) {
         xvizServer.updateObstacles(null);
     }
 });
+*/
+listener6.subscribe(function (message){
+  pointcloud = message.is_dense;
+  console.log("pointcloud :");
+  console.log(pointcloud);
+  sleep(100);
+
+});
 
 function distance(UTMlocation1, UTMlocation2) {
     let delta_x = UTMlocation2.x - UTMlocation1.x; // UTM x-axis: easting
@@ -140,6 +171,21 @@ function isInFront(carLocationUTM, heading, targetLocationUTM) {
     let delta_x = targetLocationUTM.x - carLocationUTM.x;
     let delta_y = targetLocationUTM.y - carLocationUTM.y;
     return ( -Math.sin(heading) * delta_x + Math.cos(heading) * delta_y > 0 );
+}
+function gracefulShutdown() {
+  console.log("shutting down rosbridge-xviz-connector");
+  listener.unsubscribe();
+  listener2.unsubscribe();
+  //listener3.unsubscribe();
+  listener4.unsubscribe();
+  //listener5.unsubscribe();
+  rosBridgeClient.close();
+  xvizServer.close();
+}
+
+function sleep (delay) {
+  var start = new Date().getTime();
+  while (new Date().getTime() < start + delay);
 }
 
 /* *******************************************
@@ -214,3 +260,17 @@ Sample message for path planner
     ...
   ]
 ******************************************* */
+/*
+    [
+      { datatype: 7,  count: 1,name: 'x', offset: 0 },
+      { datatype: 7,  count: 1,name: 'y',, offset: 4 },
+      { datatype: 7,  count: 1,name: 'z',   offset: 8 },
+      { datatype: 7,  count: 1,name: 'intensity', offset: 16 },
+      { datatype: 4,  count: 1,name: 'ring',   offset: 20 } ]
+      
+      false
+      31
+      3926976
+
+
+*/

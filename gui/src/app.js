@@ -124,7 +124,8 @@ class Example extends PureComponent {
 
     return (
       <div id="container">
-        <div id="control-panel">
+<div id="control-panel" style={{minWidth: 400}}>
+
           <div>
              <div id="logo">
                 {/*a 태그(Tag)는 문서를 링크 시키기 위해 사용하는 태그(Tag)이다.*/}
@@ -177,8 +178,4 @@ class Example extends PureComponent {
     );
   }
 }
-render(
-  <ThemeProvider theme={UI_THEME}>
-      <Example />
-    </ThemeProvider>, document.getElementById('app')
-  );
+render(<Example />, document.getElementById('app'));
