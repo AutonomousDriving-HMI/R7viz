@@ -26,16 +26,17 @@
 /* eslint-disable no-console, no-unused-vars, no-undef */
 import React, {PureComponent} from 'react';
 import {render} from 'react-dom';
-
 import {setXVIZConfig} from '@xviz/parser';
 import {XVIZLiveLoader,LogViewer,VIEW_MODE,XVIZPanel,StreamSettingsPanel} from 'streetscape.gl';
-import {Form, Button} from '@streetscape.gl/monochrome';
+import {ThemeProvider, Form, Button} from '@streetscape.gl/monochrome';
 
 import ROSLIB from 'roslib';
 import {XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS, XVIZ_STYLE, CAR} from './constants';
 
 /*custom import*/
 //import imgstyles from './image.css';
+import {UI_THEME} from './custom_styles'
+//import "./index.scss";
 
 setXVIZConfig(XVIZ_CONFIG);
 
@@ -61,6 +62,7 @@ const rosBridgeClient = new ROSLIB.Ros({
 const roslistener = new ROSLIB.Topic({
   ros : rosBridgeClient,
   name : '/blackfly/image_color/compressed'
+  //name : '/usb_cam/image_raw'
 });
 roslistener.subscribe(function(message) {
   document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
@@ -122,19 +124,17 @@ class Example extends PureComponent {
 
     return (
       <div id="container">
-        <div id="control-panel" style={{minWidth: 400}}>
+        <div id="control-panel">
           <div>
-            <header>
-              <div id="logo">
-                  {/*a 태그(Tag)는 문서를 링크 시키기 위해 사용하는 태그(Tag)이다.*/}
-                  {/*href : 연결할 주소를 지정 한다.
-                    target : 링크를 클릭 할 때 창을 어떻게 열지 설정 한다.
-                    title : 해당 링크에 마우스 커서를 올릴때 도움말 설명을 설정 한다.*/}
-                  <a href="https://www.dgist.ac.kr/">
-                    <img src="./assets/logo.jpg" alt="Digst Logo" width = "400px" height = "100px" />
-                  </a>
-              </div>
-          </header>
+             <div id="logo">
+                {/*a 태그(Tag)는 문서를 링크 시키기 위해 사용하는 태그(Tag)이다.*/}
+                {/*href : 연결할 주소를 지정 한다.
+                  target : 링크를 클릭 할 때 창을 어떻게 열지 설정 한다.
+                  title : 해당 링크에 마우스 커서를 올릴때 도움말 설명을 설정 한다.*/}
+                <a href="https://www.dgist.ac.kr/">
+                  <img src="./assets/logo.jpg" alt="Digst Logo" width = "400px" height = "100px" />
+                </a>
+            </div>
           </div>
           <XVIZPanel log={log} name="Metrics" />
           <hr />
@@ -177,5 +177,8 @@ class Example extends PureComponent {
     );
   }
 }
-
-render(<Example />, document.getElementById('app'));
+render(
+  <ThemeProvider theme={UI_THEME}>
+      <Example />
+    </ThemeProvider>, document.getElementById('app')
+  );
