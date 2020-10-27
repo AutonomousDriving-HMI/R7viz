@@ -51,6 +51,35 @@ const CONFIG = {
           }
         ]
       },
+      //css-loader sass-lader style-loader, url-loader모듈 추가할 예정
+      //add css-loader sass-loader style-loader module
+      {
+        test: /\.s?css$/,
+        use: [
+          {
+            loader: 'style-loader'
+          },
+          {
+            loader: 'css-loader'
+          },
+          {
+            loader: 'sass-loader',
+            options: {
+              includePaths: ['./node_modules', '.']
+            }
+          }
+        ]
+      },
+      {
+        test: /\.(jpg|png|svg)$/,
+        loader: 'url-loader',
+        options: {
+          limit: 25000,
+        },
+    },
+      //모듈 추가 end
+
+
       {
         // Unfortunately, webpack doesn't import library sourcemaps on its own...
         test: /\.js$/,

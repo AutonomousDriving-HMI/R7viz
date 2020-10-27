@@ -1,0 +1,25 @@
+#hud {
+  //padding: 12px 8px; -> 0px 0px
+  display: flex;
+  background: $background;
+  opacity: 0.9;
+  box-sizing: border-box;
+  padding: 0px 0px;
+
+  .hud-column {
+    //width: 108px; -> 50px
+    width: 108px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .autonomy-state {
+    font-size: 12px;
+    width: 92px;
+    text-align: center;
+    text-transform: capitalize;
+    padding: 4px 0;
+  }
+}

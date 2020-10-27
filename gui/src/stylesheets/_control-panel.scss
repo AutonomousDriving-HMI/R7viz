@@ -1,0 +1,100 @@
+#control-panel {
+  display: flex;
+  flex-direction: column;
+  background: $background;
+  color: #F8F8F9;
+  opacity: 0.9;
+
+  #logo {
+    text-align: left;
+    margin: 20px 25px;
+
+    img {
+      width: 340px;
+    }
+  }
+
+  #help-btn {
+    position: absolute;
+    top: 30px;
+    right: 12px;
+  }
+
+  header, footer {
+    flex: 0 0 auto;
+    text-align: center;
+  }
+  header {
+    padding: $spacing-normal;
+
+    #tabs {
+      display: flex;
+      width: 100%;
+    }
+
+    .tab {
+      flex-grow: 1;
+      background: #000;
+      cursor: pointer;
+      display: inline-block;
+      line-height: 0;
+      border: solid 1px transparent;
+      padding: $spacing-normal;
+      margin: -$spacing-tiny 0;
+      color: $color-control-inactive;
+      text-transform: capitalize;
+
+      &:hover {
+        color: $color-control-hover;
+      }
+
+      &.active {
+        border-color: #000;
+        background: $color-control-subtle;
+        color: #fff;
+      }
+    }
+
+  }
+  main {
+    flex: 1 1 auto;
+    padding: $spacing-normal;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    &::-webkit-scrollbar {
+      width: 8px;
+      background: none;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: $background-alt;
+    }
+  }
+
+  h4 {
+    text-transform: uppercase;
+    opacity: 0.4;
+    font-weight: 500;
+    font-size: 12px;
+    margin-top: 16px;
+    margin-bottom: 0;
+  }
+
+  #log-info {
+    margin-top: -12px;
+    a {
+      text-decoration: none;
+      color: $color-control-active;
+    }
+  }
+
+  #help {
+    margin-top: -12px;
+    table {
+      width: 100%;
+    }
+    td {
+      width: 50%;
+    }
+  }
+}

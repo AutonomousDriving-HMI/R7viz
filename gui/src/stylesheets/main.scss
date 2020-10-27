@@ -1,0 +1,77 @@
+@import 'theme';
+
+body {
+  user-select: none;
+  background: #000;
+  font-family: $font-family;
+  font-weight: 200;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+#container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow:hidden;
+}
+//수정 height: calc(100vh - 150px);
+#control-panel {
+  position: fixed;
+  width: 348px;
+  height: calc(100vh - 0px);
+  border-bottom: solid 1px #000;
+}
+#timeline {
+  position: fixed;
+  left: 348px;
+  right: 0;
+  bottom: 0;
+  border-left: solid 1px #000;
+}
+//이것에 대한 ; 표시 문제가 있음
+//오른쪽에 HUD 표시할 예정
+//top : 10; 추가
+//bottom :0; 수정
+//flex-direction: column; 추가
+#hud {
+  position: fixed;
+  //200 -> 130
+  width: 130px;
+  //height: 149px; -> 70px
+  //height: 70px;
+  //left: 200;
+  top : 10;
+  //bottom: 0;
+  flex-direction: column;
+}
+//custom-properties 내가 만듬
+#hud-meterwidget {
+  position: fixed;
+  //200 -> 130
+  width: 130px;
+  height: 149px;
+  right : 5px;
+  //left: 200;
+  top : 70px;
+  //bottom: 0;
+  flex-direction: column;
+}
+
+#toolbar {
+  position: fixed;
+  top: calc(50vh - 74px);
+  right: 0;
+  transform: translateY(-50%);
+}
+.mapboxgl-ctrl-logo {
+  margin-left: 350px !important;
+  margin-bottom: 2px !important;
+  opacity: 0.4;
+}
+
+@import 'control-panel';
+@import 'toolbar';
+@import 'hud';
