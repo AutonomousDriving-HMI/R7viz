@@ -243,6 +243,7 @@ class Example extends PureComponent {
               <hr />
             </div>
             <div id="hud-meterwidget">
+              <hr />
               <MeterWidget
                 log={log}
                 style={METER_WIDGET_STYLE}
