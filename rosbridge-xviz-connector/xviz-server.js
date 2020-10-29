@@ -7,28 +7,37 @@ const xvizMetaBuider = new XVIZMetadataBuilder();
 const xvizUIBuilder = new XVIZUIBuilder({});
 
 //where we define the pose of the car based on the navsat data 
-xvizMetaBuider.stream('/vehicle_pose')
-    .category("pose");
-    xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
-//what we will use to make plot the desired path of the car 
-xvizMetaBuider.stream('/vehicle/trajectory')
-	.category('primitive')
-    .type('polyline').streamStyle({
-        stroke_color: '#47B27588',// a nice transparent green
-        stroke_width: 1.5,
-        stroke_width_min_pixels: 1
-    });
-xvizMetaBuider.stream('/tracklets/objects')
-	.category('primitive')
-    .type('polygon').streamStyle({
-        "extrude": true,
-        "fill_color": "#50B3FF80",
-		"stroke_color": "#FF0000"
-    });
+xvizMetaBuider
+    .stream("/vehicle_pose").category("pose")
+    .stream("/camera/image_00")
+        .category("primitive").type("image")
+    .stream("/vehicle/trajectory")
+        .category("primitive").type("polyline")
+        .streamStyle({
+            stroke_color: '#47B27588',// a nice transparent green
+            stroke_width: 1.5,
+            stroke_width_min_pixels: 1
+        })
+    .stream("/tracklets/objects")
+        .category("primitive").type("polygon")
+        .streamStyle({
+            "extrude": true,
+            "fill_color": "#50B3FF80",
+            "stroke_color": "#FF0000"
+        })
+    .stream("/lidar/points")
+        .category("primitive").type("point")//.Coordinate('VEHICLE_RELATIVE')
+        .streamStyle({
+            "point_color_mode": 'ELEVATION',
+            "radius_pixels": 2.0,
+            "fill_color": "#47B27588"
+        });
+
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
 xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
-console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
+//console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
+
 // it turns out we cannot use a constant global builder, as all the primitives keeps adding up
 //const xvizBuilder = new XVIZBuilder({
 //    metadata: _metadata
@@ -37,9 +46,9 @@ console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 //const _mockImage = require('fs').readFileSync("./mock.jpg").toString('base64');
 
 // Global cache for location and trajectory
+
 let _locationCache = null;
 let _trajectoryCache = null;
-let _ObstaclesCache = null;
 // cache and flag for camera image
 let _cameraImageCache = null;
 //let _newCameraImageFlag = false;
@@ -72,9 +81,11 @@ function addLocationToCache(lat, lng, alt, heading, time) {
 }
 
 function tryServeFrame(){
+    let xvizBuilder = new XVIZBuilder({metadata: _metadata});
+    xvizBuilder.primitive('/lidar/points').points(_PointCloudCache).style({fill_color: '#47B27588'});
+    //xvizBuilder.primitive('/lidar/points').points(new Float32Array([1.23, 0.45, 56],[1.23, 5, 16],[1.23, 0.41, 0.06],[13, 65, 16],[53, 45, 66],[23, 45, 6],[123, 0.45, 0.58],[1.23, 0.45, 0.05])).style({fill_color: [0, 0, 0, 255]});
     if (_locationCache) {
         // frame is ready, serve it to all live connections
-        let xvizBuilder = new XVIZBuilder({metadata: _metadata});
         xvizBuilder.pose('/vehicle_pose').timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .position(0,0,0).orientation(0,0,_locationCache.heading);
@@ -83,21 +94,18 @@ function tryServeFrame(){
         } else {
             //xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]);
         }
-        if (_ObstaclesCache) {
-            //console.log("obstacle!!!", _ObstaclesCache[0]);
-            for (i=0;i<_ObstaclesCache.length;i++){
-                // build triangle around that obstacle location
-                xvizBuilder.primitive('/tracklets/objects').polygon([
-                    [_ObstaclesCache[i][0]-0.3, _ObstaclesCache[i][1]-0.3, 0],
-                    [_ObstaclesCache[i][0]+0.3, _ObstaclesCache[i][1]-0.3, 0],
-                    [_ObstaclesCache[i][0], _ObstaclesCache[i][1]+0.424, 0],
-                    [_ObstaclesCache[i][0]-0.3, _ObstaclesCache[i][1]-0.3, 0]
-                ]).style({height:1.5});
-            }
-        }
+        /*
+        if(_PointCloudCache)
+        {
+            //console.log("pointcloud");
+            //console.log(_PointCloudCache[0]);
+            xvizBuilder.primitive('/lidar/points').points(_PointCloudCache).style({fill_color: '#00ff00aa'});
+        } */
+
         if (_cameraImageCache)
         {
             xvizBuilder.primitive('/camera/image_00').image(_cameraImageCache, "jpg");
+            //xvizBuilder.primitive('/camera/image_00').image(nodeBufferToTypedArray(_cameraImageCache.image_data), "png").dimensions(_cameraImageCache.width,_cameraImageCache.height);
             //_newCameraImageFlag = false;
             //console.log("serving image ", _cameraImageCache.length);
         }
@@ -202,24 +210,23 @@ module.exports = {
         //clearInterval(_frameTimer);
         _wss.close();
     },
-
+    updatePointCloud: function(pointcloud){
+        for(let i=0; i< 99; i++)
+        {
+            pointcloud[i] = 100+i
+        }
+        _PointCloudCache = pointcloud;
+        tryServeFrame();
+        //console.log(_PointCloudCache);
+    },
     updateLocation: function(lat, lng, alt, heading, time) {
         addLocationToCache(lat, lng, alt, heading, time);
         tryServeFrame();
     },
 
-    updateCarPath: function(positions) {
-        _trajectoryCache = positions;
-    },
-
-    updateObstacles: function(positions) {
-        _ObstaclesCache = positions;
-    },
-
-    updateCameraImage: function(imagedata) {
-        //console.log("new image ", imagedata.length);
-        _cameraImageCache = imagedata;
-        //_newCameraImageFlag = true;
+    updateCameraImage: function(image_data, width, height) {
+        //console.log("new image ", image_data.length, width,height);
+        add_cameraImageCache(image_data, width, height)
+        tryServeFrame();
     }
-
 };

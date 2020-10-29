@@ -174,7 +174,7 @@ class Example extends PureComponent {
 
   render() {
     const { log, settings, mapStyle, mapToken } = this.state;
-
+    console.log(log);
     return (
       <div id="container">
         <div id="control-panel">
