@@ -174,6 +174,9 @@ class Example extends PureComponent {
 
   render() {
     const { log, settings, mapStyle, mapToken } = this.state;
+    console.log("log1 = ", log);
+    console.log("settings = ", settings);
+    //console.log("lidar", log/state/streamSettings);
 
     return (
       <div id="container">
@@ -191,6 +194,7 @@ class Example extends PureComponent {
           </div>
           <XVIZPanel log={log} name="Metrics" />
           <hr />
+          <XVIZPanel log={log} name="Camera" />
           <img src="" id="camera-image" width="100%" />
           <hr />
           <Form
@@ -216,6 +220,7 @@ class Example extends PureComponent {
         </div>
         <div id="log-panel">
           <div id="map-view">
+          {console.log("log2", log)}
             <LogViewer
               log={log}
               mapboxApiAccessToken={mapToken}

@@ -1,6 +1,22 @@
 const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
+//import ROSLIB from "roslib";
+//import xvizServer from "./xviz-server.js"
 //const sharp = require('@sharp');
+
+/***********Gwang - import parser to use parser.parse***************** */
+require('@babel/register');
+require('babel-polyfill');
+//import pkg from 'binary-parser'
+//const {Parser: BinaryParser} = pkg;
+//import {Parser as BinaryParser} from 'binary-parser';
+//const parser = new BinaryParser().floatle();
+const Parser = require('binary-parser').Parser;
+const parser = new Parser().floatle();
+var toUint8Array = require('base64-to-uint8array')
+//const parse = require('html-react-parser');
+
+
 
 let car_heading_utm_north = 0; // global variable that stores heading/orientation of the car
 let car_pos_utm = null; // global variable that stores car location in UTM
@@ -152,12 +168,208 @@ listener5.subscribe(function (message) {
 });
 */
 listener6.subscribe(function (message){
+  //lidar sensor에 대한 xviz converter를 정의하는 function
   pointcloud = message.is_dense;
   console.log("pointcloud :");
-  console.log(pointcloud);
-  sleep(100);
+  console.log("function updateLIdar start");
+  var load_lidar_data_return = []
+  load_lidar_data_return = load_lidar_data(message)
+  const positions = (load_lidar_data_return[0]);
+  const colors = (load_lidar_data_return[1]);
+  console.log("postionts", positions);
+  //var pointSize = load_lidar_data_return[1];
+  xvizServer.updateLidar(positions, colors);
+  console.log("function updateLIdar finished");
+  //sleep(100);
 
 });
+
+function readBinaryData(binary) {
+  //XVIZ API REFERENCE에 필요한 함수
+
+  const res = [];
+  console.log("binary.length : ",binary.length)
+  for (let i = 0; i < binary.length/1000; i = i + 4) {
+    if (i + 4 > binary.length) {
+      break;
+    }
+    //console.log("befor slice : ",binary.length)
+    var buf = Buffer.from(binary);
+    const parsed = parser.parse(buf.slice(i, i + 4));
+    //console.log("after slice : ",binary.length)
+    res.push(parsed);
+  }
+  return res;
+}
+
+function toBuffer(ab) {
+  //Uint8Array to Buffer
+  var buf = Buffer.alloc(ab.byteLength);
+  var view = new Uint8Array(ab);
+  for (var i = 0; i < buf.length; ++i) {
+      buf[i] = view[i];
+  }
+  return buf;
+}
+
+function str2ab(str) {
+  //ArrayBuffer to Uint8Array
+  var buf = new ArrayBuffer(str.length); // 2 bytes for each char
+  var bufView = new Uint8Array(buf);
+  for (var i=0, strLen=str.length; i<strLen; i++) {
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
+}
+
+function base64toFloat32array(b64) {
+  /**매개변수 정의
+   * b64 : rosbridge를 거치며 base64로 encoding된 data
+   * 
+   * 1002 : getfloat64 로 함수 변경하여 동작 확인해보기
+   */
+
+  var b64length = b64.length / Float32Array.BYTES_PER_ELEMENT;
+  var dView = new DataView(new ArrayBuffer(Float32Array.BYTES_PER_ELEMENT));
+  var f32arr = new Float32Array(b64length);
+  var p = 0;
+
+  for (let i = 0; i < b64length; i++) {
+    p = i * 4;
+    dView.setUint8(0, b64.charCodeAt(p));
+    dView.setUint8(1, b64.charCodeAt(p + 1));
+    dView.setUint8(2, b64.charCodeAt(p + 2));
+    dView.setUint8(3, b64.charCodeAt(p + 3));
+    f32arr[i] = dView.getfloat32(0, true);
+  }
+  return f32arr;
+}
+
+function load_lidar_data(lidar_msg) {
+
+  //const pointSize = Math.round(lidar_msg.data.length / (lidar_msg.height * lidar_msg.width));
+  console.log("Enter load_lidar_Data function");
+  const pointSize = lidar_msg.point_step;
+  const pointsCount = lidar_msg.row_step / pointSize;
+  
+  let points_binary = [];
+  let intensity_binary = [];
+  let interval = 32;
+
+  //var F32arr_lidarmsg = base64toFloat32array(lidar_msg.data);
+  //var buf = Buffer.from(F32arr_lidarmsg);
+
+  const Uint8arr = toUint8Array(lidar_msg.data) //uint8 buffer
+  const buf = Buffer.from(Uint8arr);
+
+  console.log("(lidar_msg.data.length, lidar_msg.point_step)",lidar_msg.data.length, lidar_msg.point_step);
+  //parser.parse용 for문
+    //for (let i = 0; i < lidar_msg.data.length; i += lidar_msg.point_step) {
+
+  //readFloatLE용 for문
+    for (let i = 0; i < pointsCount; i++) {
+
+    //const x = parser.parse(buf.slice(i, i + 4));
+    //const y = parser.parse(buf.slice(i + 4, i + 8));
+    //const z = parser.parse(buf.slice(i + 8, i + 12));
+    //console.log("function updateLIdar x= ", x);
+    //console.log("function updateLIdar y= ", y);
+    //console.log("function updateLIdar z= ", z);
+
+    const xLE = buf.readFloatLE(i * pointSize);
+    const yLE = buf.readFloatLE(i * pointSize + 4);
+    const zLE = buf.readFloatLE(i * pointSize + 8);
+    //console.log("function updateLIdar xLE= ",xLE);
+    //console.log("function updateLIdar yLE= ", yLE);
+    //console.log("function updateLIdar zLE= ", zLE);
+
+    //parser.parse용
+    //points_binary.push(x);
+    //points_binary.push(y);
+    //points_binary.push(z);
+
+    //readFloatLE용
+    points_binary.push(xLE);
+    points_binary.push(yLE);
+    points_binary.push(zLE);
+
+    //intensity는 구현해야야 함
+    const intensity = parser.parse(buf.slice(i + 16, i + 20));
+    //const ring = parser.parse(buf.slice(i+20, i+24));
+    //console.log("function updateLIdar parse intensity finished");
+    intensity_binary.push(intensity);
+  }
+  const points = new Float32Array(points_binary);
+  console.log("points array =", points);
+  let colors = [];
+  const intensity_float = new Float32Array(intensity_binary);
+      
+  for (let i = 0; i < intensity_float.length; ++i) {
+      colors.push(255 - intensity_float[i]); // r
+      colors.push(intensity_float[i]); // g
+      colors.push(0); // b
+      //colors.push(255); // a
+  }
+  return [points, colors];
+  
+
+  /***************************XVIZ API reference************************/
+
+  /****************1. position color를 직접 parsing*********************/
+  /*const binary = readBinaryData(lidar_msg.data);
+  const float = new Float32Array(binary);
+  const size = Math.round(binary.length / 4);
+  let points_binary = [];
+
+  const positions = new Float32Array(3 * size);
+  const colors = new Uint8Array(4 * size).fill(255);
+
+  console.log("size", size);
+  //consol.log(top -b -n1 | grep -Po '[0-9.]+ id' | awk '{print 100-$1}');
+
+
+  for (let i = 0; i < size; i ++) {
+    positions[i * 3 + 0] = float[i * 4 + 0];
+    console.log("positions[i * 3 + 0] : ", positions[i * 3 + 0]);
+    positions[i * 3 + 1] = float[i * 4 + 1];
+    console.log("positions[i * 3 + 1] : ", positions[i * 3 + 1]);
+    positions[i * 3 + 2] = float[i * 4 + 2];
+    console.log("positions[i * 3 + 2] : ", positions[i * 3 + 2]);
+
+    const reflectance = Math.min(float[i * 4 + 3], 3);
+    colors[i * 4 + 0] = 80 + reflectance * 80;
+    colors[i * 4 + 1] = 80 + reflectance * 80;
+    colors[i * 4 + 2] = 80 + reflectance * 60;
+  }
+  return [positions, colors];*/
+  /*************************************************************************/
+
+
+  /****************2. position color를 logic으로 parsing*********************/
+  /*const binary = readBinaryData(lidar_msg.data);
+  console.log("readBinaryData is Done");
+  const float = new Float32Array(binary);
+  const size = Math.round(binary.length / 4);
+
+  // We could return interleaved buffers, no conversion!
+  const positions = new Array(size);
+  const colors = new Array(size);
+
+  console.log("size : ", size);
+
+  for (let i = 0; i < size; i++) {
+    positions[i] = float.subarray(i * 4, i * 4 + 3);
+
+    const reflectance = Math.min(float[i * 4 + 3], 3);
+    colors[i] = [80 + reflectance * 80, reflectance * 80, reflectance * 60];
+  }
+  console.log("return positions, colors");
+  return {positions, colors};*/
+  /*************************************************************************/
+
+  /***************************XVIZ API reference************************/
+
+}
 
 function distance(UTMlocation1, UTMlocation2) {
     let delta_x = UTMlocation2.x - UTMlocation1.x; // UTM x-axis: easting
@@ -274,3 +486,62 @@ Sample message for path planner
 
 
 */
+/*
+{
+  "update_type": "snapshot", "updates":
+  [
+    {
+      "timestamp": 1597898167.7841446, "poses":
+      {
+        "/vehicle_pose":
+        {
+          "timestamp": 1597898167.7841446, 
+          "mapOrigin":
+          {
+            "longitude": 128.45556833333333,
+            "latitude": 35.70366333333333,
+            "altitude": 6
+          }
+          , "position": [0, 0, 0], "orientation": [0, 0, 1.57]
+        }
+      }, "primitives":
+      {
+        "/lidar/points":
+        {
+          "points":
+            [
+              {
+                "points":
+                {
+                  "positions":
+                  {
+                    "0": 78.37200164794922,
+                    "1": 8.07800006866455,
+                    "2": 2.872999906539917,
+                    "3": 77.81600189208984,
+                    "4": 9.630000114440918,
+                    "5": 2.8610000610351562,
+                    "6": 71.74400329589844,
+                    "7": 10.137999534606934,
+                    "8": 2.6589999198913574,
+                    "9": 71.82499694824219,
+                    "10": 10.380000114440918,
+                    "11": 2.6630001068115234,
+                    "12": 71.86499786376953,
+                    "13": 10.616000175476074,
+                    "14": 2.6659998893737793,
+                    "15": 71.88899993896484
+                  }, 
+                    "pointSize": 32
+                }, "base":
+                {
+                  "style":
+                    { "fill_color": "#333333" }
+                }
+              }
+            ]
+        }
+      }
+    }
+  ]
+}*/

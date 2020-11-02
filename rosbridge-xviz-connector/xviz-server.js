@@ -3,6 +3,7 @@ const process = require('process');
 
 const {XVIZMetadataBuilder, XVIZBuilder, XVIZUIBuilder, encodeBinaryXVIZ} = require("@xviz/builder");
 
+
 const xvizMetaBuider = new XVIZMetadataBuilder();
 const xvizUIBuilder = new XVIZUIBuilder({});
 
@@ -19,20 +20,39 @@ xvizMetaBuider.stream('/vehicle/trajectory')
         stroke_width_min_pixels: 1
     });
 xvizMetaBuider.stream('/tracklets/objects')
-	.category('primitive')
+    .category('primitive')
     .type('polygon').streamStyle({
         "extrude": true,
         "fill_color": "#50B3FF80",
-		"stroke_color": "#FF0000"
+        "stroke_color": "#FF0000"
     });
+    
+xvizMetaBuider
+    .stream('/lidar/points')
+    //.stream('/point-cloud')
+    .category('primitive')
+    .type('point')
+    .streamStyle({
+        fill_color: '##00a',
+        radius_pixels: 2.0
+    })
+    // laser scanner relative to GPS position
+    // http://www.cvlibs.net/datasets/kitti/setup.php
+    //.coordinate('VEHICLE_RELATIVE')
+    .pose({
+        x: 0.81,
+        y: -0.32,
+        z: 1.73
+    });
+
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
 xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
 console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 // it turns out we cannot use a constant global builder, as all the primitives keeps adding up
-//const xvizBuilder = new XVIZBuilder({
-//    metadata: _metadata
-//});
+const xvizBuilder = new XVIZBuilder({
+    metadata: _metadata
+});
 
 //const _mockImage = require('fs').readFileSync("./mock.jpg").toString('base64');
 
@@ -50,6 +70,11 @@ let _connectionMap = new Map();
 let _wss = null;
 // glober timer object to control XVIZ frame rate
 let _frameTimer = null;
+
+//Gwang- make LidarCache
+let _lidarCache = null;
+
+
 
 function connectionId() {
   const id = _connectionCounter;
@@ -71,11 +96,30 @@ function addLocationToCache(lat, lng, alt, heading, time) {
     //console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
 }
 
+//Gwang - make addLidarDataToCache
+//아마도 lidar는 points, colors를 가지고 XVIZ를 만드는것으로 파악이된다.
+function addLidarDataToCache(pt, col) {
+    ids_list = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    ids_uint32 = new Uint32Array(ids_list);
+
+    _lidarCache = {
+        points: pt,
+        colors: col,
+        ids : ids_uint32
+    };
+    console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col,ids_uint32);
+}
+
+
+
+
 function tryServeFrame(){
+    
     if (_locationCache) {
         // frame is ready, serve it to all live connections
         let xvizBuilder = new XVIZBuilder({metadata: _metadata});
-        xvizBuilder.pose('/vehicle_pose').timestamp(_locationCache.timestamp)
+        xvizBuilder.pose('/vehicle_pose')
+        .timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .position(0,0,0).orientation(0,0,_locationCache.heading);
         if (_trajectoryCache) {
@@ -101,9 +145,24 @@ function tryServeFrame(){
             //_newCameraImageFlag = false;
             //console.log("serving image ", _cameraImageCache.length);
         }
-        //const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(),{});
-        const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
-        //console.log( xvizFrame);
+
+        //Gwang - add lidar XvizBuilder
+        if (_lidarCache) {
+            xvizBuilder
+                .primitive('/lidar/points')
+                //.primitive('/point-cloud')
+                .points(_lidarCache.points)
+                .colors(_lidarCache.colors)
+                //.ids(_lidarCache.ids)
+                .style({fill_color : '#333333'});
+                //.colors(fill_color : '#00ff00aa')
+                //.colors(_lidarCache.colors)
+        }
+        //console.log(xvizBuilder.getMessage());
+        const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(),{});
+        //const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
+        //console.log(xvizFrame);
+        //sleep(100);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
         });
@@ -179,7 +238,10 @@ class ConnectionContext {
         //this.log(`< sent frame.`);
     }
 }
-
+function sleep(t){
+    return new Promise(resolve=>setTimeout(resolve,t));
+ }
+ 
 module.exports = {
     startListenOn: function (portNum) {
         console.log(`xviz server starting on ws://localhost:${portNum}`);
@@ -206,6 +268,13 @@ module.exports = {
     updateLocation: function(lat, lng, alt, heading, time) {
         addLocationToCache(lat, lng, alt, heading, time);
         tryServeFrame();
+    },
+    //Gwnag - Lidar approach
+    updateLidar : function(pt, col)  {
+        addLidarDataToCache(pt, col);
+        //console.log("new updatelidar data (point, color): ", pt, col)
+        tryServeFrame();
+
     },
 
     updateCarPath: function(positions) {
