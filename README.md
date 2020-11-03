@@ -2,6 +2,7 @@
 # we make avs
 
 # Dependencies
+
 ```
-npm install base64-to-uint8array
+ npm install base64-to-uint8array
 ```
