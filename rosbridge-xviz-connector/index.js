@@ -104,12 +104,13 @@ listener2.subscribe(function(message) {
 
 listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
-  let {width, height, data} = message;
-  //const data = toUint8Array(message.data)
+  let {width, height} = message;
+  const data_ = toUint8Array(message.data)
+  const data = Buffer.from(data_);
   //console.log(data)
   //console.log(Buffer.isBuffer(data_))
   //sleep(100000)
-  createSharpImg(data,width,height)
+  createSharpImg(data);
 });
 
 //listener 4 is the odometry of the car, location in UTM and orientation
@@ -183,26 +184,29 @@ listener6.subscribe(function (message){
   //sleep(100);
 
 });
+let maxHeight = null;
+let maxWidth = nul
 //base64 type image(94312) => compressed image (base64, png, resize)
-async function createSharpImg(data,width_,height_) {
-  //const buf = Buffer.from(data);
-  //console.log("buf",buf)
-  img = await sharp({
-    create: {
-      data: data,
-      width: width_,
-      height: height_,
-      channels: 3,
-      background: { r: 0, g: 0, b: 0, alpha: 0.5 }
+async function createSharpImg(data) {
+
+  const width = 1920;
+  const height = 1080;
+  const { resizeWidth, resizeHeight } = getResizeDimension(width, height, maxWidth, maxHeight);
+  //console.log("resize data",resizeWidth,resizeHeight);
+  const image = await sharp(data, {
+    raw: {
+      width,
+      height,
+      channels: 3
     }
   })
-  .png()
-  .resize(400)
-  .toFormat('png')
-  .toBuffer();
-  //console.log(img);
-  //sleep(1000)
-  xvizServer.updateCameraImage(img,width_,height_);
+    //.raw()
+    .png()
+    .resize(resizeWidth, resizeHeight)
+    .toFormat('png')
+    .toBuffer();
+  xvizServer.updateCameraImage(image, resizeWidth, resizeHeight);
+  //xvizServer.updateCameraImage(img,width_,height_);
 }
 
 function readBinaryData(binary) {

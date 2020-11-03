@@ -305,6 +305,7 @@ module.exports = {
 
     updateCameraImage: function(image_data,width,height) {
         //console.log("new image ", image_data.length);
+        // Initialize a new ImageData object
         add_cameraImageCache(image_data, width, height)
         tryServeFrame();
     }
