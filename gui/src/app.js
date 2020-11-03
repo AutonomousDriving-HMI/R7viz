@@ -191,7 +191,8 @@ class Example extends PureComponent {
           </div>
           <XVIZPanel log={log} name="Metrics" />
           <hr />
-          <img src="" id="camera-image" width="100%" />
+          <XVIZPanel log={log} name="Camera" />
+          <hr />
           <hr />
           <Form
             data={APP_SETTINGS}
