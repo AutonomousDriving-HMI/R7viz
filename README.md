@@ -5,4 +5,5 @@
 
 ```
  npm install base64-to-uint8array
+ npm install sharp
 ```
