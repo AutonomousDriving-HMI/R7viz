@@ -2,7 +2,10 @@ const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
 //import ROSLIB from "roslib";
 //import xvizServer from "./xviz-server.js"
-//const sharp = require('sharp');
+const sharp = require('sharp');
+const Parser = require('binary-parser').Parser;
+const parser = new Parser().floatle();
+var toUint8Array = require('base64-to-uint8array')
 
 /***********Gwang - import parser to use parser.parse***************** */
 //require('@babel/register');
@@ -11,9 +14,7 @@ const xvizServer = require('./xviz-server');
 //const {Parser: BinaryParser} = pkg;
 //import {Parser as BinaryParser} from 'binary-parser';
 //const parser = new BinaryParser().floatle();
-const Parser = require('binary-parser').Parser;
-const parser = new Parser().floatle();
-var toUint8Array = require('base64-to-uint8array')
+
 //const parse = require('html-react-parser');
 
 
@@ -92,8 +93,8 @@ listener.subscribe(function(message) {
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
     // why timestamp object is only $ object?
     // reference
-    console.log('GPS data test')
-    console.log(message.latitude, message.longitude, message.altitude,parseFloat(timestamp));
+    //console.log('GPS data test')
+    //console.log(message.latitude, message.longitude, message.altitude,parseFloat(timestamp));
     xvizServer.updateLocation(message.latitude, message.longitude, message.altitude, car_heading_utm_north, parseFloat(timestamp));
     
 });
@@ -101,31 +102,28 @@ listener2.subscribe(function(message) {
     plannedPath = message.poses;
 });
 
-/*
 listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
-  const imgData =  sharp(message.data, {raw: {
-    width,
-    height,
-    channel: 3
-    }
-  })
-  //xvizServer.updateCameraImage(message.data);
+  let {width, height, data} = message;
+  //const data = toUint8Array(message.data)
+  //console.log(data)
+  //console.log(Buffer.isBuffer(data_))
+  //sleep(100000)
+  createSharpImg(data,width,height)
 });
-*/
 
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
     //let orientation = message.pose.pose.orientation;
     let orientation = message.orientation;
-    console.log('IMU data orientation');
-    console.log(orientation);
+    //console.log('IMU data orientation');
+    //console.log(orientation);
     sleep(1000);
     // quaternion to heading (z component of euler angle) ref: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
     // positive heading denotes rotating from north to west; while zero means north
     car_heading_utm_north = Math.atan2( 2*( orientation.z * orientation.w + orientation.x * orientation.y), 1 - 2 * ( orientation.z * orientation.z + orientation.y * orientation.y ));
-    console.log('car_heading_utm_north');
-    console.log(car_heading_utm_north);
+    //console.log('car_heading_utm_north');
+    //console.log(car_heading_utm_north);
     /*
     if (plannedPath) {
         // if plannedPath is a valid array, then find the trajectory to display 
@@ -172,19 +170,40 @@ listener5.subscribe(function (message) {
 listener6.subscribe(function (message){
   //lidar sensor에 대한 xviz converter를 정의하는 function
   pointcloud = message.is_dense;
-  console.log("pointcloud :");
-  console.log("function updateLIdar start");
+  //console.log("pointcloud :");
+  //console.log("function updateLIdar start");
   var load_lidar_data_return = []
   load_lidar_data_return = load_lidar_data(message)
   const positions = (load_lidar_data_return[0]);
   const colors = (load_lidar_data_return[1]);
-  console.log("postionts", positions);
+  //console.log("postionts", positions);
   //var pointSize = load_lidar_data_return[1];
   xvizServer.updateLidar(positions, colors);
-  console.log("function updateLIdar finished");
+  //console.log("function updateLIdar finished");
   //sleep(100);
 
 });
+//base64 type image(94312) => compressed image (base64, png, resize)
+async function createSharpImg(data,width_,height_) {
+  //const buf = Buffer.from(data);
+  //console.log("buf",buf)
+  img = await sharp({
+    create: {
+      data: data,
+      width: width_,
+      height: height_,
+      channels: 3,
+      background: { r: 0, g: 0, b: 0, alpha: 0.5 }
+    }
+  })
+  .png()
+  .resize(400)
+  .toFormat('png')
+  .toBuffer();
+  //console.log(img);
+  //sleep(1000)
+  xvizServer.updateCameraImage(img,width_,height_);
+}
 
 function readBinaryData(binary) {
   //XVIZ API REFERENCE에 필요한 함수
@@ -250,7 +269,7 @@ function base64toFloat32array(b64) {
 function load_lidar_data(lidar_msg) {
 
   //const pointSize = Math.round(lidar_msg.data.length / (lidar_msg.height * lidar_msg.width));
-  console.log("Enter load_lidar_Data function");
+  //console.log("Enter load_lidar_Data function");
   const pointSize = lidar_msg.point_step;
   const pointsCount = lidar_msg.row_step / pointSize;
   
@@ -266,7 +285,7 @@ function load_lidar_data(lidar_msg) {
   const Uint8arr = toUint8Array(lidar_msg.data) //uint8 buffer
   const buf = Buffer.from(Uint8arr);
 
-  console.log("(lidar_msg.data.length, lidar_msg.point_step)",lidar_msg.data.length, lidar_msg.point_step);
+  //console.log("(lidar_msg.data.length, lidar_msg.point_step)",lidar_msg.data.length, lidar_msg.point_step);
   //parser.parse용 for문
     //for (let i = 0; i < lidar_msg.data.length; i += lidar_msg.point_step) {
 

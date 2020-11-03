@@ -1,3 +1,7 @@
+/*
+xviz styling 
+https://github.com/uber/xviz/blob/master/docs/protocol-schema/style-specification.md#point
+*/
 const WebSocket = require('ws');
 const process = require('process');
 
@@ -10,7 +14,7 @@ const xvizUIBuilder = new XVIZUIBuilder({});
 //where we define the pose of the car based on the navsat data 
 xvizMetaBuider.stream('/vehicle_pose')
     .category("pose");
-    xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
+xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
 //what we will use to make plot the desired path of the car 
 xvizMetaBuider.stream('/vehicle/trajectory')
 	.category('primitive')
@@ -48,7 +52,7 @@ xvizMetaBuider
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
 xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
-console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
+//console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 // it turns out we cannot use a constant global builder, as all the primitives keeps adding up
 const xvizBuilder = new XVIZBuilder({
     metadata: _metadata
@@ -105,16 +109,23 @@ function addLidarDataToCache(pt, col) {
         colors: col,
     };
     console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col);
+    //console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col,ids_uint32);
+}
+//jaekeun image_data (base64), width (resized width), height(resized height)
+function add_cameraImageCache(image_data, width, height){
+    //console.log("camera information update!")
+    //console.log(_cameraImageCache)
+    _cameraImageCache = {
+        image_data: image_data,
+        width: width,
+        height: height  
+    };
 }
 
-
-
-
 function tryServeFrame(){
-    
+    // frame is ready, serve it to all live connections
+    let xvizBuilder = new XVIZBuilder({metadata: _metadata});
     if (_locationCache) {
-        // frame is ready, serve it to all live connections
-        let xvizBuilder = new XVIZBuilder({metadata: _metadata});
         xvizBuilder.pose('/vehicle_pose')
         .timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
@@ -136,9 +147,14 @@ function tryServeFrame(){
                 ]).style({height:1.5});
             }
         }
-        if (_cameraImageCache)
-        {
-            xvizBuilder.primitive('/camera/image_00').image(_cameraImageCache, "jpg");
+        //jaeketun revise camera xvizbuilder
+        if (_cameraImageCache) {
+            console.log("image data", nodeBufferToTypedArray(_cameraImageCache.image_data))
+            xvizBuilder.primitive('/camera/image_00').
+                image(nodeBufferToTypedArray(_cameraImageCache.image_data), 'png')
+                .dimensions(_cameraImageCache.width,_cameraImageCache.height)
+                //.dimensions(33, 11)
+                .position([1, 1, 1]);
             //_newCameraImageFlag = false;
             //console.log("serving image ", _cameraImageCache.length);
         }
@@ -165,6 +181,11 @@ function tryServeFrame(){
         });
     }
     return;
+}
+//using camrea xviz builder (base64 -> uint8Array (camera input type))
+function nodeBufferToTypedArray(buffer){
+    const typedArray = new Uint8Array(buffer);
+    return typedArray;
 }
 
 class ConnectionContext {
@@ -282,10 +303,10 @@ module.exports = {
         _ObstaclesCache = positions;
     },
 
-    updateCameraImage: function(imagedata) {
-        //console.log("new image ", imagedata.length);
-        _cameraImageCache = imagedata;
-        //_newCameraImageFlag = true;
+    updateCameraImage: function(image_data,width,height) {
+        //console.log("new image ", image_data.length);
+        add_cameraImageCache(image_data, width, height)
+        tryServeFrame();
     }
 
 };
