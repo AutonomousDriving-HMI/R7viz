@@ -188,6 +188,7 @@ class Example extends PureComponent {
                 <img src="./assets/logo.jpg" alt="Digst Logo" />
               </a>
             </div>
+            
           </div>
           <XVIZPanel log={log} name="Metrics" />
           <hr />

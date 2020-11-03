@@ -2,11 +2,11 @@ const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
 //import ROSLIB from "roslib";
 //import xvizServer from "./xviz-server.js"
-//const sharp = require('@sharp');
+//const sharp = require('sharp');
 
 /***********Gwang - import parser to use parser.parse***************** */
-require('@babel/register');
-require('babel-polyfill');
+//require('@babel/register');
+//require('babel-polyfill');
 //import pkg from 'binary-parser'
 //const {Parser: BinaryParser} = pkg;
 //import {Parser as BinaryParser} from 'binary-parser';
@@ -100,6 +100,7 @@ listener.subscribe(function(message) {
 listener2.subscribe(function(message) {
     plannedPath = message.poses;
 });
+
 /*
 listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
@@ -112,6 +113,7 @@ listener3.subscribe(function(message) {
   //xvizServer.updateCameraImage(message.data);
 });
 */
+
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
     //let orientation = message.pose.pose.orientation;
@@ -254,6 +256,8 @@ function load_lidar_data(lidar_msg) {
   
   let points_binary = [];
   let intensity_binary = [];
+  //let colors = []; //colors 변경
+  const colors = new Uint8Array(3 * pointsCount).fill(255);
   let interval = 32;
 
   //var F32arr_lidarmsg = base64toFloat32array(lidar_msg.data);
@@ -294,22 +298,27 @@ function load_lidar_data(lidar_msg) {
     points_binary.push(zLE);
 
     //intensity는 구현해야야 함
-    const intensity = parser.parse(buf.slice(i + 16, i + 20));
+    const reflectance = buf.readFloatLE(i * pointSize + 16);
+    colors[i * 3 + 0] = 80 + reflectance * 80;
+    colors[i * 3 + 1] = 80 + reflectance * 80;
+    colors[i * 3 + 2] = 80 + reflectance * 60;
+
+
     //const ring = parser.parse(buf.slice(i+20, i+24));
     //console.log("function updateLIdar parse intensity finished");
-    intensity_binary.push(intensity);
+    //intensity_binary.push(intensity);
   }
   const points = new Float32Array(points_binary);
-  console.log("points array =", points);
-  let colors = [];
+  //console.log("points array =", points);
   const intensity_float = new Float32Array(intensity_binary);
-      
+  /*  
   for (let i = 0; i < intensity_float.length; ++i) {
       colors.push(255 - intensity_float[i]); // r
       colors.push(intensity_float[i]); // g
       colors.push(0); // b
-      //colors.push(255); // a
-  }
+      colors.push(255); // a
+  }*/
+
   return [points, colors];
   
 

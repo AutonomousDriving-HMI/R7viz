@@ -1312,6 +1312,11 @@ better-assert@~1.0.0:
   dependencies:
     callsite "1.0.0"
 
+binary-parser@^1.3.2:
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/binary-parser/-/binary-parser-1.7.0.tgz#117dbfb071dde44a4910ea072a8d32e1549e8e12"
+  integrity sha512-lIWQLmiEJtx2ZAUPbZWLA/0bgxYdWkySU9pZq5dNRcyzliZCBIwbgLeyydu57GFskGcZDbirMjPSgVcUgZpbdg==
+
 blob@0.0.5:
   version "0.0.5"
   resolved "https://registry.yarnpkg.com/blob/-/blob-0.0.5.tgz#d680eeef25f8cd91ad533f5b01eed48e64caf683"

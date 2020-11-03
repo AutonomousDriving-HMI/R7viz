@@ -62,7 +62,7 @@ let _trajectoryCache = null;
 let _ObstaclesCache = null;
 // cache and flag for camera image
 let _cameraImageCache = null;
-//let _newCameraImageFlag = false;
+//let _newCameraImageFlag = false;333333
 // Global counter and cache for connections
 let _connectionCounter = 1;
 let _connectionMap = new Map();
@@ -99,15 +99,12 @@ function addLocationToCache(lat, lng, alt, heading, time) {
 //Gwang - make addLidarDataToCache
 //아마도 lidar는 points, colors를 가지고 XVIZ를 만드는것으로 파악이된다.
 function addLidarDataToCache(pt, col) {
-    ids_list = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-    ids_uint32 = new Uint32Array(ids_list);
 
     _lidarCache = {
         points: pt,
         colors: col,
-        ids : ids_uint32
     };
-    console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col,ids_uint32);
+    console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col);
 }
 
 
@@ -154,7 +151,7 @@ function tryServeFrame(){
                 .points(_lidarCache.points)
                 .colors(_lidarCache.colors)
                 //.ids(_lidarCache.ids)
-                .style({fill_color : '#333333'});
+                .style({fill_color : '#00ff00aa'});
                 //.colors(fill_color : '#00ff00aa')
                 //.colors(_lidarCache.colors)
         }
