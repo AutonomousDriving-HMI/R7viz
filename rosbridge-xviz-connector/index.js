@@ -2,7 +2,10 @@ const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
 //import ROSLIB from "roslib";
 //import xvizServer from "./xviz-server.js"
-//const sharp = require('sharp');
+const sharp = require('sharp');
+const Parser = require('binary-parser').Parser;
+const parser = new Parser().floatle();
+var toUint8Array = require('base64-to-uint8array')
 
 /***********Gwang - import parser to use parser.parse***************** */
 //require('@babel/register');
@@ -11,9 +14,7 @@ const xvizServer = require('./xviz-server');
 //const {Parser: BinaryParser} = pkg;
 //import {Parser as BinaryParser} from 'binary-parser';
 //const parser = new BinaryParser().floatle();
-const Parser = require('binary-parser').Parser;
-const parser = new Parser().floatle();
-var toUint8Array = require('base64-to-uint8array')
+
 //const parse = require('html-react-parser');
 
 
@@ -101,18 +102,16 @@ listener2.subscribe(function(message) {
     plannedPath = message.poses;
 });
 
-/*
+
 listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
-  const imgData =  sharp(message.data, {raw: {
-    width,
-    height,
-    channel: 3
-    }
-  })
-  //xvizServer.updateCameraImage(message.data);
+  let {width, height, data} = message;
+  //const data = toUint8Array(message.data)
+  //console.log(data)
+  //console.log(Buffer.isBuffer(data_))
+  //sleep(100000)
+  createSharpImg(data,width,height)
 });
-*/
 
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
@@ -185,6 +184,28 @@ listener6.subscribe(function (message){
   //sleep(100);
 
 });
+//base64 type image(94312) => compressed image (base64, png, resize)
+async function createSharpImg(data,width_,height_) {
+  //const buf = Buffer.from(data);
+  //console.log("buf",buf)
+  img = await sharp({
+    create: {
+      data: data,
+      width: width_,
+      height: height_,
+      channels: 3,
+      background: { r: 0, g: 0, b: 0, alpha: 0.5 }
+    }
+  })
+  .png()
+  .resize(400)
+  .toFormat('png')
+  .toBuffer();
+  //console.log(img);
+  //sleep(1000)
+  xvizServer.updateCameraImage(img,width_,height_);
+}
+
 
 function readBinaryData(binary) {
   //XVIZ API REFERENCE에 필요한 함수
