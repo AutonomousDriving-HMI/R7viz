@@ -20,9 +20,12 @@ var toUint8Array = require('base64-to-uint8array')
 
 
 let car_heading_utm_north = 0; // global variable that stores heading/orientation of the car
+let x_dir_velocity = 0;
+let x_dir_acl = 0;
+let steering_degree = 0;
 let car_pos_utm = null; // global variable that stores car location in UTM
 let plannedPath = null; // global variable that hold an array of planned path
-
+let img = null;
 let pointcloud = null;
 
 const rosBridgeClient = new ROSLIB.Ros({
@@ -41,7 +44,6 @@ const listener2 = new ROSLIB.Topic({
     ros : rosBridgeClient,
     name : '/PathPlanner/desired_path'
 });
-
 
 // for camera image
 const listener3 = new ROSLIB.Topic({
@@ -64,9 +66,28 @@ const listener5 = new ROSLIB.Topic({
     name : '/planner_obstacles'
 });
 */
+
+// for car acceleration
+const listener5 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/vehicle/filtered_accel'
+});
+
 const listener6 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   name : '/points_raw'
+});
+
+// for car forward x velocity (TwistStamped based)
+const listener7 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/vehicle/twist'
+});
+
+// for car Steering angle (dbw_mkz_msgs/SteeringReport)
+const listener8 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/vehicle/steering_report'
 });
 
 xvizServer.startListenOn(8081);
@@ -95,7 +116,7 @@ listener.subscribe(function(message) {
     // reference
     //console.log('GPS data test')
     //console.log(message.latitude, message.longitude, message.altitude,parseFloat(timestamp));
-    xvizServer.updateLocation(message.latitude, message.longitude, message.altitude, car_heading_utm_north, parseFloat(timestamp));
+    xvizServer.updateLocation(message.latitude, message.longitude, message.altitude, car_heading_utm_north, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
     
 });
 listener2.subscribe(function(message) {
@@ -104,12 +125,13 @@ listener2.subscribe(function(message) {
 
 listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
-  let {width, height, data} = message;
-  //const data = toUint8Array(message.data)
+  let {width, height} = message;
+  const data_ = toUint8Array(message.data)
+  const data = Buffer.from(data_);
   //console.log(data)
   //console.log(Buffer.isBuffer(data_))
   //sleep(100000)
-  createSharpImg(data,width,height)
+  createSharpImg(data);
 });
 
 //listener 4 is the odometry of the car, location in UTM and orientation
@@ -167,6 +189,11 @@ listener5.subscribe(function (message) {
     }
 });
 */
+
+listener5.subscribe(function (message){
+  x_dir_acl = message.data;
+});
+
 listener6.subscribe(function (message){
   //lidar sensor에 대한 xviz converter를 정의하는 function
   pointcloud = message.is_dense;
@@ -183,26 +210,71 @@ listener6.subscribe(function (message){
   //sleep(100);
 
 });
+
+//TwistStamped
+listener7.subscribe(function (message){
+  x_dir_velocity = message.twist.linear.x * 3.6; // m/s -> km/h
+});
+
+//SteeringReport
+listener8.subscribe(function (message){
+  steering_degree = radToDegree(message.steering_wheel_angle)
+});
+
+let maxHeight = null;
+let maxWidth = null;
 //base64 type image(94312) => compressed image (base64, png, resize)
-async function createSharpImg(data,width_,height_) {
-  //const buf = Buffer.from(data);
-  //console.log("buf",buf)
-  img = await sharp({
-    create: {
-      data: data,
-      width: width_,
-      height: height_,
-      channels: 3,
-      background: { r: 0, g: 0, b: 0, alpha: 0.5 }
+async function createSharpImg(data) {
+
+  const width = 1920;
+  const height = 1080;
+  const { resizeWidth, resizeHeight } = getResizeDimension(width, height, maxWidth, maxHeight);
+  //console.log("resize data",resizeWidth,resizeHeight);
+  const image = await sharp(data, {
+    raw: {
+      width,
+      height,
+      channels: 3
     }
   })
-  .png()
-  .resize(400)
-  .toFormat('png')
-  .toBuffer();
-  //console.log(img);
-  //sleep(1000)
-  xvizServer.updateCameraImage(img,width_,height_);
+    //.raw()
+    .png()
+    .resize(resizeWidth, resizeHeight)
+    .toFormat('png')
+    .toBuffer();
+  xvizServer.updateCameraImage(image, resizeWidth, resizeHeight);
+  //xvizServer.updateCameraImage(img,width_,height_);
+}
+
+function getResizeDimension(width__, height__){
+  const ratio = width__/height__;
+  let resizeWidth = null;
+  let resizeHeight = null;
+
+  if (maxHeight > 0 && maxWidth > 0) {
+    resizeWidth = Math.min(maxWidth, maxHeight * ratio);
+    resizeHeight = Math.min(maxHeight, maxWidth / ratio);
+  }
+  else if (maxHeight > 0) {
+    resizeWidth = maxHeight * ratio;
+    resizeHeight = maxHeight;
+  }
+  else if (maxWidth > 0) {
+    resizeWidth = maxWidth;
+    resizeHeight = maxWidth / ratio;
+  }
+  else {
+    resizeWidth = width__;
+    resizeHeight = height__;
+  }
+  return {
+    resizeWidth: Math.floor(resizeWidth),
+    resizeHeight: Math.floor(resizeHeight)
+  };
+}
+
+function radToDegree(radian){
+  return radian*(180/Math.PI)
 }
 
 function readBinaryData(binary) {

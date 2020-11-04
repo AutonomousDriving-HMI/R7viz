@@ -7,7 +7,6 @@ const process = require('process');
 
 const {XVIZMetadataBuilder, XVIZBuilder, XVIZUIBuilder, encodeBinaryXVIZ} = require("@xviz/builder");
 
-
 const xvizMetaBuider = new XVIZMetadataBuilder();
 const xvizUIBuilder = new XVIZUIBuilder({});
 
@@ -49,6 +48,22 @@ xvizMetaBuider
         z: 1.73
     });
 
+xvizMetaBuider
+    .stream('/vehicle/velocity')
+    .category('time_series')
+    .type('float')
+    .unit('m/s')
+
+    .stream('/vehicle/wheel_angle')
+    .category('time_series')
+    .type('float')
+    .unit('degrees')
+
+    .stream('/vehicle/acceleration')
+    .category('time_series')
+    .type('float')
+    .unit('m/s^2');
+
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
 xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
@@ -88,12 +103,15 @@ function connectionId() {
 
 // add a new location message 
 
-function addLocationToCache(lat, lng, alt, heading, time) {
+function addLocationToCache(lat, lng, alt, heading,speed,steering, accel, time) {
 
     _locationCache = {
         latitude: lat,
         longitude: lng,
         altitude: alt,
+        x_dir_velocity: speed,
+        degree_of_steering: steering,
+        x_dir_accelation :accel,
         timestamp: time,
         heading: 1.57+heading//90 degree of difference between xviz frame
     };
@@ -130,6 +148,19 @@ function tryServeFrame(){
         .timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .position(0,0,0).orientation(0,0,_locationCache.heading);
+
+        xvizBuilder.timeSeries('/vehicle/velocity')
+        .timestamp(_locationCache.timestamp)
+        .value(_locationCache.x_dir_velocity);
+        
+        xvizBuilder.timeSeries('/vehicle/acceleration')
+        .timestamp(_locationCache.timestamp)
+        .value(_locationCache.x_dir_accelation);
+
+        xvizBuilder.timeSeries('/vehicle/wheel_angle')
+        .timestamp(_locationCache.timestamp)
+        .value(_locationCache.degree_of_steering);
+
         if (_trajectoryCache) {
             xvizBuilder.primitive('/vehicle/trajectory').polyline(_trajectoryCache);
         } else {
@@ -282,9 +313,9 @@ module.exports = {
         //clearInterval(_frameTimer);
         _wss.close();
     },
-
-    updateLocation: function(lat, lng, alt, heading, time) {
-        addLocationToCache(lat, lng, alt, heading, time);
+    //jaekeun - car status approach
+    updateLocation: function(lat, lng, alt, heading, speed, steering, accel, time) {
+        addLocationToCache(lat, lng, alt, heading, speed, steering, accel, time);
         tryServeFrame();
     },
     //Gwnag - Lidar approach
@@ -305,8 +336,8 @@ module.exports = {
 
     updateCameraImage: function(image_data,width,height) {
         //console.log("new image ", image_data.length);
+        // Initialize a new ImageData object
         add_cameraImageCache(image_data, width, height)
         tryServeFrame();
     }
-
 };
