@@ -135,14 +135,12 @@ listener3.subscribe(function(message) {
   //console.log(data)
   //console.log(Buffer.isBuffer(data_))
   //sleep(100000)
-  createSharpImg(data);*/
-});
+  createSharpImg(data);
+});*/
 
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
     //let orientation = message.pose.pose.orientation;
-    console.log("test");
-    console.log(message.orientation.y)
     roll, pitch, yaw = QuaternionToRoll_Pitch_Yaw(message.orientation);
     // quaternion to heading (z component of euler angle) ref: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
     // positive heading denotes rotating from north to west; while zero means north
@@ -294,7 +292,7 @@ function readBinaryData(binary) {
   //XVIZ API REFERENCE에 필요한 함수
 
   const res = [];
-  console.log("binary.length : ",binary.length)
+  //console.log("binary.length : ",binary.length)
   for (let i = 0; i < binary.length/1000; i = i + 4) {
     if (i + 4 > binary.length) {
       break;

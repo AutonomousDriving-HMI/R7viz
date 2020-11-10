@@ -37,11 +37,11 @@ xvizMetaBuider
     .type('point')
     .streamStyle({
         fill_color: '##00a',
-        radius_pixels: 2.0
+        radius_pixels: 1.0
     })
     // laser scanner relative to GPS position
     // http://www.cvlibs.net/datasets/kitti/setup.php
-    //.coordinate('VEHICLE_RELATIVE')
+    .coordinate('VEHICLE_RELATIVE')
     .pose({
         x: 0,
         y: 0,
@@ -128,7 +128,7 @@ function addLidarDataToCache(pt, col) {
         points: pt,
         colors: col,
     };
-    console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col);
+    //console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col);
     //console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col,ids_uint32);
 }
 //jaekeun image_data (base64), width (resized width), height(resized height)
@@ -182,7 +182,7 @@ function tryServeFrame(){
         }
         //jaeketun revise camera xvizbuilder
         if (_cameraImageCache) {
-            console.log("image data", nodeBufferToTypedArray(_cameraImageCache.image_data))
+            //console.log("image data", nodeBufferToTypedArray(_cameraImageCache.image_data))
             xvizBuilder.primitive('/camera/image_00').
                 image(nodeBufferToTypedArray(_cameraImageCache.image_data), 'png')
                 .dimensions(_cameraImageCache.width,_cameraImageCache.height)
