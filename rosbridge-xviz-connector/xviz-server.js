@@ -43,9 +43,9 @@ xvizMetaBuider
     // http://www.cvlibs.net/datasets/kitti/setup.php
     //.coordinate('VEHICLE_RELATIVE')
     .pose({
-        x: 0.81,
-        y: -0.32,
-        z: 1.73
+        x: 0,
+        y: 0,
+        z: 0
     });
 
 xvizMetaBuider
@@ -103,17 +103,19 @@ function connectionId() {
 
 // add a new location message 
 
-function addLocationToCache(lat, lng, alt, heading,speed,steering, accel, time) {
+function addLocationToCache(lat, lng, alt, roll, ptich, yaw,speed,steering, accel, time) {
 
     _locationCache = {
         latitude: lat,
         longitude: lng,
         altitude: alt,
+        roll: roll,
+        ptich: ptich,
+        yaw: yaw,
         x_dir_velocity: speed,
         degree_of_steering: steering,
         x_dir_accelation :accel,
         timestamp: time,
-        heading: 1.57+heading//90 degree of difference between xviz frame
     };
     //console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
 }
@@ -147,7 +149,7 @@ function tryServeFrame(){
         xvizBuilder.pose('/vehicle_pose')
         .timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
-            .position(0,0,0).orientation(0,0,_locationCache.heading);
+            .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw);
 
         xvizBuilder.timeSeries('/vehicle/velocity')
         .timestamp(_locationCache.timestamp)
@@ -314,8 +316,8 @@ module.exports = {
         _wss.close();
     },
     //jaekeun - car status approach
-    updateLocation: function(lat, lng, alt, heading, speed, steering, accel, time) {
-        addLocationToCache(lat, lng, alt, heading, speed, steering, accel, time);
+    updateLocation: function(lat, lng, alt, roll, pitch, yaw, speed, steering, accel, time) {
+        addLocationToCache(lat, lng, alt, roll, pitch, yaw,  speed, steering, accel, time);
         tryServeFrame();
     },
     //Gwnag - Lidar approach
