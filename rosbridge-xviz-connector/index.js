@@ -2,7 +2,7 @@ const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
 //import ROSLIB from "roslib";
 //import xvizServer from "./xviz-server.js"
-const sharp = require('sharp');
+//const sharp = require('sharp');
 const Parser = require('binary-parser').Parser;
 const parser = new Parser().floatle();
 var toUint8Array = require('base64-to-uint8array')
@@ -19,7 +19,7 @@ var toUint8Array = require('base64-to-uint8array')
 
 
 
-let car_heading_utm_north = 0; // global variable that stores heading/orientation of the car
+//let car_heading_utm_north = 0; // global variable that stores heading/orientation of the car
 let x_dir_velocity = 0;
 let x_dir_acl = 0;
 let steering_degree = 0;
@@ -27,6 +27,10 @@ let car_pos_utm = null; // global variable that stores car location in UTM
 let plannedPath = null; // global variable that hold an array of planned path
 let img = null;
 let pointcloud = null;
+let roll = null;
+let yaw = null;
+let pitch = null;
+
 
 const rosBridgeClient = new ROSLIB.Ros({
     url : 'ws://localhost:9090'
@@ -36,7 +40,8 @@ const rosBridgeClient = new ROSLIB.Ros({
 const listener = new ROSLIB.Topic({
     ros : rosBridgeClient,
     //name : '/navsat/fix'
-    name : '/vehicle/gps/fix' 
+    //name : '/vehicle/gps/fix' 
+    name : '/filter/positionlla'
 });
 
 // for planned path in UTM coordinate
@@ -55,8 +60,8 @@ const listener3 = new ROSLIB.Topic({
 const listener4 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   //name : '/navsat/odom'//there is another topic '/imu/data' that has orientation
-  //name : '/imu/data'
-  name : '/vehicle/imu/data_raw '
+  name : '/imu/data'
+  //name : '/vehicle/imu/data_raw '
 });
 
 // for obstacle information
@@ -81,7 +86,8 @@ const listener6 = new ROSLIB.Topic({
 // for car forward x velocity (TwistStamped based)
 const listener7 = new ROSLIB.Topic({
   ros : rosBridgeClient,
-  name : '/vehicle/twist'
+  //name : '/vehicle/twist'
+  name :'/filter/twist'
 });
 
 // for car Steering angle (dbw_mkz_msgs/SteeringReport)
@@ -112,17 +118,15 @@ listener.subscribe(function(message) {
     //var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
     //////let let is chanagble not const////
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
-    // why timestamp object is only $ object?
-    // reference
+    let {x, y, z} = message.vector
     //console.log('GPS data test')
     //console.log(message.latitude, message.longitude, message.altitude,parseFloat(timestamp));
-    xvizServer.updateLocation(message.latitude, message.longitude, message.altitude, car_heading_utm_north, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
-    
+    xvizServer.updateLocation(x, y, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
 });
 listener2.subscribe(function(message) {
     plannedPath = message.poses;
 });
-
+/*
 listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
   let {width, height} = message;
@@ -131,19 +135,18 @@ listener3.subscribe(function(message) {
   //console.log(data)
   //console.log(Buffer.isBuffer(data_))
   //sleep(100000)
-  createSharpImg(data);
+  createSharpImg(data);*/
 });
 
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
     //let orientation = message.pose.pose.orientation;
-    let orientation = message.orientation;
-    //console.log('IMU data orientation');
-    //console.log(orientation);
-    sleep(1000);
+    console.log("test");
+    console.log(message.orientation.y)
+    roll, pitch, yaw = QuaternionToRoll_Pitch_Yaw(message.orientation);
     // quaternion to heading (z component of euler angle) ref: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
     // positive heading denotes rotating from north to west; while zero means north
-    car_heading_utm_north = Math.atan2( 2*( orientation.z * orientation.w + orientation.x * orientation.y), 1 - 2 * ( orientation.z * orientation.z + orientation.y * orientation.y ));
+    //car_heading_utm_north = Math.atan2( 2*( orientation.z * orientation.w + orientation.x * orientation.y), 1 - 2 * ( orientation.z * orientation.z + orientation.y * orientation.y ));
     //console.log('car_heading_utm_north');
     //console.log(car_heading_utm_north);
     /*
@@ -245,6 +248,16 @@ async function createSharpImg(data) {
   xvizServer.updateCameraImage(image, resizeWidth, resizeHeight);
   //xvizServer.updateCameraImage(img,width_,height_);
 }
+
+function QuaternionToRoll_Pitch_Yaw(message){
+  const {x, y, z, w} =  message;
+  //console.log(x,y,z,w)
+  const roll_ = Math.atan2(2*x*w + 2*y*z, 1 - 2*x*x - 2*y*y);
+  const pitch_ =  Math.asin(2*w*y + 2*z*x);
+  const yaw_ = Math.atan2(2*z*w + 2*x*y, 1 - 2*y*y - 2*z*z);
+  return roll_, pitch_, yaw_;
+}
+
 
 function getResizeDimension(width__, height__){
   const ratio = width__/height__;
