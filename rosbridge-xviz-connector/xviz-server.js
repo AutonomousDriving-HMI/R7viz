@@ -93,7 +93,14 @@ let _frameTimer = null;
 //Gwang- make LidarCache
 let _lidarCache = null;
 
-
+//fps check
+var lastCalledTime;
+var LidarTime
+var after_gps_t;
+var GPS_t;
+var fps;
+var after_lidar_t;
+var LiDAR_t;
 
 function connectionId() {
   const id = _connectionCounter;
@@ -150,6 +157,7 @@ function tryServeFrame(){
         .timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw);
+        after_gps_t = Date.now();
 
         xvizBuilder.timeSeries('/vehicle/velocity')
         .timestamp(_locationCache.timestamp)
@@ -203,6 +211,7 @@ function tryServeFrame(){
                 .style({fill_color : '#00ff00aa'});
                 //.colors(fill_color : '#00ff00aa')
                 //.colors(_lidarCache.colors)
+            after_lidar_t = Date.now();
         }
         //console.log(xvizBuilder.getMessage());
         const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(),{});
@@ -211,7 +220,15 @@ function tryServeFrame(){
         //sleep(100);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
+            _locationCache = null;
         });
+        GPS_t = (after_gps_t - lastCalledTime);
+        LiDAR_t = (after_lidar_t - LidarTime)/1000;
+        console.log("gps_time:",GPS_t);
+        console.log("lidar_time:",LiDAR_t)/1000;
+        GPS_t = 0
+        LiDAR_t = 0
+        after_lidar_t = 0
     }
     return;
 }
@@ -292,7 +309,7 @@ class ConnectionContext {
 function sleep(t){
     return new Promise(resolve=>setTimeout(resolve,t));
  }
- 
+
 module.exports = {
     startListenOn: function (portNum) {
         console.log(`xviz server starting on ws://localhost:${portNum}`);
@@ -340,6 +357,12 @@ module.exports = {
         //console.log("new image ", image_data.length);
         // Initialize a new ImageData object
         add_cameraImageCache(image_data, width, height)
-        tryServeFrame();
+        tryServeFrame();    
+    },
+    init_time: function(time){
+        lastCalledTime = time
+    },
+    lidar_time: function(time){
+        LidarTime = time
     }
 };
