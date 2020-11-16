@@ -93,8 +93,6 @@ let _frameTimer = null;
 //Gwang- make LidarCache
 let _lidarCache = null;
 
-
-
 function connectionId() {
   const id = _connectionCounter;
   _connectionCounter++;
@@ -149,7 +147,7 @@ function tryServeFrame(){
         xvizBuilder.pose('/vehicle_pose')
         .timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
-            .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw);
+            .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw+1.57*2);
 
         xvizBuilder.timeSeries('/vehicle/velocity')
         .timestamp(_locationCache.timestamp)
@@ -211,6 +209,8 @@ function tryServeFrame(){
         //sleep(100);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
+            _locationCache = null;
+            //_lidarCache = null;
         });
     }
     return;
@@ -292,7 +292,7 @@ class ConnectionContext {
 function sleep(t){
     return new Promise(resolve=>setTimeout(resolve,t));
  }
- 
+
 module.exports = {
     startListenOn: function (portNum) {
         console.log(`xviz server starting on ws://localhost:${portNum}`);
@@ -340,6 +340,12 @@ module.exports = {
         //console.log("new image ", image_data.length);
         // Initialize a new ImageData object
         add_cameraImageCache(image_data, width, height)
-        tryServeFrame();
+        tryServeFrame();    
+    },
+    init_time: function(time){
+        lastCalledTime = time
+    },
+    lidar_time: function(time){
+        LidarTime = time
     }
 };
