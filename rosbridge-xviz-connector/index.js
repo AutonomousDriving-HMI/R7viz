@@ -31,10 +31,6 @@ let roll = null;
 let yaw = null;
 let pitch = null;
 
-//check fps
-var lastCalledTime;
-var lastLiDARTime
-var fps;
 
 const rosBridgeClient = new ROSLIB.Ros({
     url : 'ws://localhost:9090'
@@ -120,11 +116,6 @@ rosBridgeClient.on('close', function() {
 //fps check
 
 listener.subscribe(function (message) {
-    if (message) {
-      lastCalledTime = Date.now();
-      console.log("init time:", lastCalledTime)
-      xvizServer.init_time(lastCalledTime)
-    }
     //var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
     //////let let is chanagble not const////
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
@@ -206,11 +197,6 @@ listener5.subscribe(function (message){
 });
 
 listener6.subscribe(function (message){
-  if (message){
-    lastLiDARTime = Date.now();
-    console.log("init lidar_time:", lastLiDARTime)
-    xvizServer.lidar_time(lastLiDARTime)
-  }
   //lidar sensor에 대한 xviz converter를 정의하는 function
   pointcloud = message.is_dense;
   //console.log("pointcloud :");
