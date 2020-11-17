@@ -144,9 +144,15 @@ function tryServeFrame(){
     // frame is ready, serve it to all live connections
     let xvizBuilder = new XVIZBuilder({metadata: _metadata});
     if (_locationCache) {
+        /**DGIST OSM map does not specify height
+         * We set the height of the car at zero.
+         * Use _locationCache.altitude' when using a map with height
+          */
+        let no_altitude = 0;
         xvizBuilder.pose('/vehicle_pose')
         .timestamp(_locationCache.timestamp)
-            .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
+            //.mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
+            .mapOrigin(_locationCache.longitude, _locationCache.latitude, no_altitude)
             .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw+1.57*2);
 
         xvizBuilder.timeSeries('/vehicle/velocity')
