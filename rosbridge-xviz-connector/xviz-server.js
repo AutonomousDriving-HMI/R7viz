@@ -7,7 +7,6 @@ const process = require('process');
 
 const {XVIZMetadataBuilder, XVIZBuilder, XVIZUIBuilder, encodeBinaryXVIZ} = require("@xviz/builder");
 
-
 const xvizMetaBuider = new XVIZMetadataBuilder();
 const xvizUIBuilder = new XVIZUIBuilder({});
 
@@ -38,16 +37,32 @@ xvizMetaBuider
     .type('point')
     .streamStyle({
         fill_color: '##00a',
-        radius_pixels: 2.0
+        radius_pixels: 1.0
     })
     // laser scanner relative to GPS position
     // http://www.cvlibs.net/datasets/kitti/setup.php
-    //.coordinate('VEHICLE_RELATIVE')
+    .coordinate('VEHICLE_RELATIVE')
     .pose({
-        x: 0.81,
-        y: -0.32,
-        z: 1.73
+        x: 0,
+        y: 0,
+        z: 0
     });
+
+xvizMetaBuider
+    .stream('/vehicle/velocity')
+    .category('time_series')
+    .type('float')
+    .unit('m/s')
+
+    .stream('/vehicle/wheel_angle')
+    .category('time_series')
+    .type('float')
+    .unit('degrees')
+
+    .stream('/vehicle/acceleration')
+    .category('time_series')
+    .type('float')
+    .unit('m/s^2');
 
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
 xvizMetaBuider.ui(xvizUIBuilder);
@@ -78,8 +93,6 @@ let _frameTimer = null;
 //Gwang- make LidarCache
 let _lidarCache = null;
 
-
-
 function connectionId() {
   const id = _connectionCounter;
   _connectionCounter++;
@@ -88,14 +101,19 @@ function connectionId() {
 
 // add a new location message 
 
-function addLocationToCache(lat, lng, alt, heading, time) {
+function addLocationToCache(lat, lng, alt, roll, ptich, yaw,speed,steering, accel, time) {
 
     _locationCache = {
         latitude: lat,
         longitude: lng,
         altitude: alt,
+        roll: roll,
+        ptich: ptich,
+        yaw: yaw,
+        x_dir_velocity: speed,
+        degree_of_steering: steering,
+        x_dir_accelation :accel,
         timestamp: time,
-        heading: 1.57+heading//90 degree of difference between xviz frame
     };
     //console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
 }
@@ -108,7 +126,7 @@ function addLidarDataToCache(pt, col) {
         points: pt,
         colors: col,
     };
-    console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col);
+    //console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col);
     //console.log("new lidar data (point, pointSizem ids_uint32): ", pt, col,ids_uint32);
 }
 //jaekeun image_data (base64), width (resized width), height(resized height)
@@ -126,10 +144,29 @@ function tryServeFrame(){
     // frame is ready, serve it to all live connections
     let xvizBuilder = new XVIZBuilder({metadata: _metadata});
     if (_locationCache) {
+        /**DGIST OSM map does not specify height
+         * We set the height of the car at zero.
+         * Use _locationCache.altitude' when using a map with height
+          */
+        let no_altitude = 0;
         xvizBuilder.pose('/vehicle_pose')
         .timestamp(_locationCache.timestamp)
-            .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
-            .position(0,0,0).orientation(0,0,_locationCache.heading);
+            //.mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
+            .mapOrigin(_locationCache.longitude, _locationCache.latitude, no_altitude)
+            .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw+1.57*2);
+
+        xvizBuilder.timeSeries('/vehicle/velocity')
+        .timestamp(_locationCache.timestamp)
+        .value(_locationCache.x_dir_velocity);
+        
+        xvizBuilder.timeSeries('/vehicle/acceleration')
+        .timestamp(_locationCache.timestamp)
+        .value(_locationCache.x_dir_accelation);
+
+        xvizBuilder.timeSeries('/vehicle/wheel_angle')
+        .timestamp(_locationCache.timestamp)
+        .value(_locationCache.degree_of_steering);
+
         if (_trajectoryCache) {
             xvizBuilder.primitive('/vehicle/trajectory').polyline(_trajectoryCache);
         } else {
@@ -149,7 +186,7 @@ function tryServeFrame(){
         }
         //jaeketun revise camera xvizbuilder
         if (_cameraImageCache) {
-            console.log("image data", nodeBufferToTypedArray(_cameraImageCache.image_data))
+            //console.log("image data", nodeBufferToTypedArray(_cameraImageCache.image_data))
             xvizBuilder.primitive('/camera/image_00').
                 image(nodeBufferToTypedArray(_cameraImageCache.image_data), 'png')
                 .dimensions(_cameraImageCache.width,_cameraImageCache.height)
@@ -178,6 +215,8 @@ function tryServeFrame(){
         //sleep(100);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
+            _locationCache = null;
+            //_lidarCache = null;
         });
     }
     return;
@@ -259,7 +298,7 @@ class ConnectionContext {
 function sleep(t){
     return new Promise(resolve=>setTimeout(resolve,t));
  }
- 
+
 module.exports = {
     startListenOn: function (portNum) {
         console.log(`xviz server starting on ws://localhost:${portNum}`);
@@ -282,9 +321,9 @@ module.exports = {
         //clearInterval(_frameTimer);
         _wss.close();
     },
-
-    updateLocation: function(lat, lng, alt, heading, time) {
-        addLocationToCache(lat, lng, alt, heading, time);
+    //jaekeun - car status approach
+    updateLocation: function(lat, lng, alt, roll, pitch, yaw, speed, steering, accel, time) {
+        addLocationToCache(lat, lng, alt, roll, pitch, yaw,  speed, steering, accel, time);
         tryServeFrame();
     },
     //Gwnag - Lidar approach
@@ -305,8 +344,14 @@ module.exports = {
 
     updateCameraImage: function(image_data,width,height) {
         //console.log("new image ", image_data.length);
+        // Initialize a new ImageData object
         add_cameraImageCache(image_data, width, height)
-        tryServeFrame();
+        tryServeFrame();    
+    },
+    init_time: function(time){
+        lastCalledTime = time
+    },
+    lidar_time: function(time){
+        LidarTime = time
     }
-
 };

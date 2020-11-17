@@ -2,7 +2,7 @@ const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
 //import ROSLIB from "roslib";
 //import xvizServer from "./xviz-server.js"
-const sharp = require('sharp');
+//const sharp = require('sharp');
 const Parser = require('binary-parser').Parser;
 const parser = new Parser().floatle();
 var toUint8Array = require('base64-to-uint8array')
@@ -19,11 +19,18 @@ var toUint8Array = require('base64-to-uint8array')
 
 
 
-let car_heading_utm_north = 0; // global variable that stores heading/orientation of the car
+//let car_heading_utm_north = 0; // global variable that stores heading/orientation of the car
+let x_dir_velocity = 0;
+let x_dir_acl = 0;
+let steering_degree = 0;
 let car_pos_utm = null; // global variable that stores car location in UTM
 let plannedPath = null; // global variable that hold an array of planned path
-
+let img = null;
 let pointcloud = null;
+let roll = null;
+let yaw = null;
+let pitch = null;
+
 
 const rosBridgeClient = new ROSLIB.Ros({
     url : 'ws://localhost:9090'
@@ -33,7 +40,8 @@ const rosBridgeClient = new ROSLIB.Ros({
 const listener = new ROSLIB.Topic({
     ros : rosBridgeClient,
     //name : '/navsat/fix'
-    name : '/vehicle/gps/fix' 
+    //name : '/vehicle/gps/fix' 
+    name : '/filter/positionlla'
 });
 
 // for planned path in UTM coordinate
@@ -41,7 +49,6 @@ const listener2 = new ROSLIB.Topic({
     ros : rosBridgeClient,
     name : '/PathPlanner/desired_path'
 });
-
 
 // for camera image
 const listener3 = new ROSLIB.Topic({
@@ -53,8 +60,8 @@ const listener3 = new ROSLIB.Topic({
 const listener4 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   //name : '/navsat/odom'//there is another topic '/imu/data' that has orientation
-  //name : '/imu/data'
-  name : '/vehicle/imu/data_raw '
+  name : '/imu/data'
+  //name : '/vehicle/imu/data_raw '
 });
 
 // for obstacle information
@@ -64,9 +71,29 @@ const listener5 = new ROSLIB.Topic({
     name : '/planner_obstacles'
 });
 */
+
+// for car acceleration
+const listener5 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/vehicle/filtered_accel'
+});
+
 const listener6 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   name : '/points_raw'
+});
+
+// for car forward x velocity (TwistStamped based)
+const listener7 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  //name : '/vehicle/twist'
+  name :'/filter/twist'
+});
+
+// for car Steering angle (dbw_mkz_msgs/SteeringReport)
+const listener8 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/vehicle/steering_report'
 });
 
 xvizServer.startListenOn(8081);
@@ -86,42 +113,39 @@ rosBridgeClient.on('close', function() {
     console.log('Connection to rosbridge websocket server closed.');
 });
 
+//fps check
 
-listener.subscribe(function(message) {
+listener.subscribe(function (message) {
     //var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
     //////let let is chanagble not const////
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
-    // why timestamp object is only $ object?
-    // reference
+    let {x, y, z} = message.vector
     //console.log('GPS data test')
     //console.log(message.latitude, message.longitude, message.altitude,parseFloat(timestamp));
-    xvizServer.updateLocation(message.latitude, message.longitude, message.altitude, car_heading_utm_north, parseFloat(timestamp));
-    
+    xvizServer.updateLocation(x, y, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
 });
 listener2.subscribe(function(message) {
     plannedPath = message.poses;
 });
-
+/*
 listener3.subscribe(function(message) {
   //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
-  let {width, height, data} = message;
-  //const data = toUint8Array(message.data)
+  let {width, height} = message;
+  const data_ = toUint8Array(message.data)
+  const data = Buffer.from(data_);
   //console.log(data)
   //console.log(Buffer.isBuffer(data_))
   //sleep(100000)
-  createSharpImg(data,width,height)
-});
+  createSharpImg(data);
+});*/
 
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
     //let orientation = message.pose.pose.orientation;
-    let orientation = message.orientation;
-    //console.log('IMU data orientation');
-    //console.log(orientation);
-    sleep(1000);
+    roll, pitch, yaw = QuaternionToRoll_Pitch_Yaw(message.orientation);
     // quaternion to heading (z component of euler angle) ref: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
     // positive heading denotes rotating from north to west; while zero means north
-    car_heading_utm_north = Math.atan2( 2*( orientation.z * orientation.w + orientation.x * orientation.y), 1 - 2 * ( orientation.z * orientation.z + orientation.y * orientation.y ));
+    //car_heading_utm_north = Math.atan2( 2*( orientation.z * orientation.w + orientation.x * orientation.y), 1 - 2 * ( orientation.z * orientation.z + orientation.y * orientation.y ));
     //console.log('car_heading_utm_north');
     //console.log(car_heading_utm_north);
     /*
@@ -167,6 +191,11 @@ listener5.subscribe(function (message) {
     }
 });
 */
+
+listener5.subscribe(function (message){
+  x_dir_acl = message.data;
+});
+
 listener6.subscribe(function (message){
   //lidar sensor에 대한 xviz converter를 정의하는 function
   pointcloud = message.is_dense;
@@ -183,33 +212,88 @@ listener6.subscribe(function (message){
   //sleep(100);
 
 });
+
+//TwistStamped
+listener7.subscribe(function (message){
+  x_dir_velocity = message.twist.linear.x * 3.6; // m/s -> km/h
+});
+
+//SteeringReport
+listener8.subscribe(function (message){
+  steering_degree = radToDegree(message.steering_wheel_angle)
+});
+
+let maxHeight = null;
+let maxWidth = null;
 //base64 type image(94312) => compressed image (base64, png, resize)
-async function createSharpImg(data,width_,height_) {
-  //const buf = Buffer.from(data);
-  //console.log("buf",buf)
-  img = await sharp({
-    create: {
-      data: data,
-      width: width_,
-      height: height_,
-      channels: 3,
-      background: { r: 0, g: 0, b: 0, alpha: 0.5 }
+async function createSharpImg(data) {
+
+  const width = 1920;
+  const height = 1080;
+  const { resizeWidth, resizeHeight } = getResizeDimension(width, height, maxWidth, maxHeight);
+  //console.log("resize data",resizeWidth,resizeHeight);
+  const image = await sharp(data, {
+    raw: {
+      width,
+      height,
+      channels: 3
     }
   })
-  .png()
-  .resize(400)
-  .toFormat('png')
-  .toBuffer();
-  //console.log(img);
-  //sleep(1000)
-  xvizServer.updateCameraImage(img,width_,height_);
+    //.raw()
+    .png()
+    .resize(resizeWidth, resizeHeight)
+    .toFormat('png')
+    .toBuffer();
+  xvizServer.updateCameraImage(image, resizeWidth, resizeHeight);
+  //xvizServer.updateCameraImage(img,width_,height_);
+}
+
+function QuaternionToRoll_Pitch_Yaw(message){
+  const {x, y, z, w} =  message;
+  //console.log(x,y,z,w)
+  const roll_ = Math.atan2(2*x*w + 2*y*z, 1 - 2*x*x - 2*y*y);
+  const pitch_ =  Math.asin(2*w*y + 2*z*x);
+  const yaw_ = Math.atan2(2*z*w + 2*x*y, 1 - 2*y*y - 2*z*z);
+  return roll_, pitch_, yaw_;
+}
+
+
+function getResizeDimension(width__, height__){
+  const ratio = width__/height__;
+  let resizeWidth = null;
+  let resizeHeight = null;
+
+  if (maxHeight > 0 && maxWidth > 0) {
+    resizeWidth = Math.min(maxWidth, maxHeight * ratio);
+    resizeHeight = Math.min(maxHeight, maxWidth / ratio);
+  }
+  else if (maxHeight > 0) {
+    resizeWidth = maxHeight * ratio;
+    resizeHeight = maxHeight;
+  }
+  else if (maxWidth > 0) {
+    resizeWidth = maxWidth;
+    resizeHeight = maxWidth / ratio;
+  }
+  else {
+    resizeWidth = width__;
+    resizeHeight = height__;
+  }
+  return {
+    resizeWidth: Math.floor(resizeWidth),
+    resizeHeight: Math.floor(resizeHeight)
+  };
+}
+
+function radToDegree(radian){
+  return radian*(180/Math.PI)
 }
 
 function readBinaryData(binary) {
   //XVIZ API REFERENCE에 필요한 함수
 
   const res = [];
-  console.log("binary.length : ",binary.length)
+  //console.log("binary.length : ",binary.length)
   for (let i = 0; i < binary.length/1000; i = i + 4) {
     if (i + 4 > binary.length) {
       break;
@@ -426,6 +510,19 @@ function gracefulShutdown() {
 function sleep (delay) {
   var start = new Date().getTime();
   while (new Date().getTime() < start + delay);
+}
+
+//fps check function
+function requestAnimFrame() {
+
+  if(!lastCalledTime) {
+     lastCalledTime = Date.now();
+     fps = 0;
+     return;
+  }
+  delta = (Date.now() - lastCalledTime)/1000;
+  lastCalledTime = Date.now();
+  fps = 1/delta;
 }
 
 /* *******************************************

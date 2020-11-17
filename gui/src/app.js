@@ -45,6 +45,7 @@ import { XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS, XVIZ_STYLE, CAR } from './c
 /*custom import*/
 //import imgstyles from './image.css';
 import { UI_THEME } from './custom_styles'
+import MapView from './mapview';
 import './stylesheets/main.scss';
 //import "./index.scss";
 
@@ -218,14 +219,23 @@ class Example extends PureComponent {
         </div>
         <div id="log-panel">
           <div id="map-view">
-            <LogViewer
+          {<MapView
               log={log}
-              mapboxApiAccessToken={mapToken}
-              mapStyle={mapStyle}
+              settings={settings}
+              onSettingsChange={this._onSettingsChange}
+              mapToken = {mapToken}
+              mapStyle = {mapStyle}
+               />
+            }
+            {/*<LogViewer
+              log={log}
+              //mapboxApiAccessToken={mapToken}
+              //mapStyle={mapStyle}
               car={CAR}
               xvizStyles={XVIZ_STYLE}
+              customLayers={customLayers}
               viewMode={VIEW_MODE[settings.viewMode]}
-            />
+            />*/}
             <div id="hud">
               {/*
                 add TurnSignalWidget, TrafficLightWidget, MeterWidget
