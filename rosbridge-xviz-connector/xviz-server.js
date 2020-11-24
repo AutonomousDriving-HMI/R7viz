@@ -202,7 +202,7 @@ function tryServeFrame(){
                 .primitive('/lidar/points')
                 //.primitive('/point-cloud')
                 .points(_lidarCache.points)
-                .colors(_lidarCache.colors)
+                //.colors(_lidarCache.colors)
                 //.ids(_lidarCache.ids)
                 .style({fill_color : '#00ff00aa'});
                 //.colors(fill_color : '#00ff00aa')
@@ -216,7 +216,7 @@ function tryServeFrame(){
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
             _locationCache = null;
-            //_lidarCache = null;
+            _lidarCache = null;
         });
     }
     return;

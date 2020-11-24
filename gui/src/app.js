@@ -39,7 +39,7 @@ import {
 } from 'streetscape.gl';
 import { ThemeProvider, Form, Button } from '@streetscape.gl/monochrome';
 
-import ROSLIB from 'roslib';
+//import ROSLIB from 'roslib';
 import { XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS, XVIZ_STYLE, CAR } from './constants';
 
 /*custom import*/
@@ -47,6 +47,7 @@ import { XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS, XVIZ_STYLE, CAR } from './c
 import { UI_THEME } from './custom_styles'
 import MapView from './mapview';
 import './stylesheets/main.scss';
+//import {FpsView} from "react-fps";
 //import "./index.scss";
 
 setXVIZConfig(XVIZ_CONFIG);
@@ -67,27 +68,16 @@ if (!mapStyleRef) {
 
 // get camera image directly from rosbridge instead of xviz
 // for better performance
-const rosBridgeClient = new ROSLIB.Ros({
-  url: 'ws://' + server + ':9090'
-});
-const roslistener = new ROSLIB.Topic({
-  ros: rosBridgeClient,
-  name: '/blackfly/image_color/compressed'
-  //name : '/usb_cam/image_raw'
-});
-roslistener.subscribe(function (message) {
-  document.getElementById("camera-image").src = "data:image/jpg;base64," + message.data;
-});
 
 const exampleLog = new XVIZLiveLoader({
   logGuid: 'mock',
-  bufferLength: 4,
+  bufferLength: 10,
   serverConfig: {
     defaultLogLength: 5,
     serverUrl: 'ws://' + server + ':8081'
   },
   worker: true,
-  maxConcurrency: 2
+  maxConcurrency: 3
 });
 
 /**Wheel_Widget_Style, Meter_Widget_Style, Turn_Signal_Widget_Style
@@ -141,7 +131,8 @@ class Example extends PureComponent {
     },
     serverURL: server,
     mapToken: mapboxToken,
-    mapStyle: mapStyleRef
+    mapStyle: mapStyleRef,
+    count : 0
   };
 
   componentDidMount() {
@@ -172,12 +163,12 @@ class Example extends PureComponent {
     }
     window.location.replace(newPage);
   }
-
   render() {
     const { log, settings, mapStyle, mapToken } = this.state;
     console.log(log);
     return (
       <div id="container">
+        {/*<FpsView width={240} height={180} bottom={60} right={80}/>*/}
         <div id="control-panel">
           <div>
             <div id="logo">
@@ -195,6 +186,9 @@ class Example extends PureComponent {
           <hr />
           <XVIZPanel log={log} name="Camera" />
           <hr />
+          <h3>FPS INFO</h3>
+          <hr />
+
           <hr />
           <Form
             data={APP_SETTINGS}
@@ -275,8 +269,6 @@ class Example extends PureComponent {
               />
               <hr />
             </div>
-
-
           </div>
         </div>
       </div>
