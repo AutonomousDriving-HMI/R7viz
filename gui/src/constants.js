@@ -69,3 +69,7 @@ export const XVIZ_STYLE = {
   '/lidar/points': [{style: {point_color_mode: 'ELEVATION', fill_color: "#47B27588"}}]
   //'/points_raw': [{style:  {point_color_mode: 'elevation',radiusPixels: 3, fill_color: "#00a", radiusPixels: 3}}]
 };
+
+export const STYLES = {
+  PERF: {fontFamily: '"Helvetica Neue",arial,sans-serif', fontSize: 12}
+};

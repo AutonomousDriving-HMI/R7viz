@@ -65,8 +65,33 @@ xvizMetaBuider
     .unit('m/s^2');
 
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
+//xvizMetaBuider.ui(xvizUIBuilder);
+/************************metrics start************************************* */
+
+const panel = xvizUIBuilder.panel({name: 'Metrics'});
+const container = xvizUIBuilder.container({
+    name: 'Metrics Panel',
+    layout: 'vertical'
+  });
+const metrics1 = xvizUIBuilder.metric({streams: ['/vehicle/velocity'], title: 'Velocity'});
+const metrics2 = xvizUIBuilder.metric({streams: ['/vehicle/acceleration'], title: 'Acceleration'});
+const metrics3 = xvizUIBuilder.metric({streams: ['/vehicle/wheel_angle'], title: 'Wheel_Angle'});
+
+container.child(metrics1);
+container.child(metrics2);
+container.child(metrics3);
+xvizUIBuilder.child(panel).child(container);
+
+const ui = xvizUIBuilder.getUI();
+console.log(ui);
+
+//xvizMetaBuider.ui(xvizUIBuilder);
+/************************metrics end************************************* */
+
+
 xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
+console.log(_metadata);
 //console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 // it turns out we cannot use a constant global builder, as all the primitives keeps adding up
 const xvizBuilder = new XVIZBuilder({
@@ -215,7 +240,7 @@ function tryServeFrame(){
         //sleep(100);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
-            _locationCache = null;
+            //_locationCache = null;
             _lidarCache = null;
         });
     }
@@ -330,7 +355,7 @@ module.exports = {
     updateLidar : function(pt, col)  {
         addLidarDataToCache(pt, col);
         //console.log("new updatelidar data (point, color): ", pt, col)
-        tryServeFrame();
+        //tryServeFrame();
 
     },
 
@@ -346,7 +371,7 @@ module.exports = {
         //console.log("new image ", image_data.length);
         // Initialize a new ImageData object
         add_cameraImageCache(image_data, width, height)
-        tryServeFrame();    
+        //tryServeFrame();    
     },
     init_time: function(time){
         lastCalledTime = time

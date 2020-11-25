@@ -356,6 +356,8 @@ function load_lidar_data(lidar_msg) {
   //console.log("Enter load_lidar_Data function");
   const pointSize = lidar_msg.point_step;
   const pointsCount = lidar_msg.row_step / pointSize;
+
+  //console.log("pointsCount", pointsCount);
   
   let points_binary = [];
   let intensity_binary = [];

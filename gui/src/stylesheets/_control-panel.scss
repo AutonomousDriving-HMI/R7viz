@@ -10,7 +10,6 @@
     margin: 20px 25px;
 
     img {
-      left : 10px;
       width: 340px;
     }
   }
@@ -97,5 +96,10 @@
     td {
       width: 50%;
     }
+  }
+  .wheel-image {
+    height: 124px;
+    width: 124px;
+    align-self: center;
   }
 }
