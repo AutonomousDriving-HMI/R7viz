@@ -15,6 +15,23 @@ const _ = require('lodash')
 const xvizMetaBuider = new XVIZMetadataBuilder();
 const xvizUIBuilder = new XVIZUIBuilder({});
 
+//jaekeun object info name space
+const VECHILE_STREAM = '/objects/shape/vehicle'
+const PEDSTRIAN_STREAM = '/objects/shape/pedestrian'
+const Arrow_STREAM = '/objects/arrow'
+const UNKNOWN_STREAM = '/objects/shape/vehicle/unknown'
+const LINELIST_STREAM = 'marker/shape/linelist'
+
+//object class
+UNKNOWN = '0'
+CAR = '1'
+TRUCK = '2'
+BUS = '3'
+BICYCLE = '4'
+MOTORBIKE = '5'
+PEDESTRIAN = '6'
+ANIMAL = '7'
+
 xvizMetaBuider.stream('/vehicle_pose')
     .category("pose");
 xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");

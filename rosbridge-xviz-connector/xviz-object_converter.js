@@ -9,22 +9,13 @@ you should "yarn first"
   sudo nano xviz-trajectory-helper.js "
 */
 
+
 //jaekeun object info name space
 const VECHILE_STREAM = '/objects/shape/vehicle'
 const PEDSTRIAN_STREAM = '/objects/shape/pedestrian'
 const Arrow_STREAM = '/objects/arrow'
 const UNKNOWN_STREAM = '/objects/shape/vehicle/unknown'
 const LINELIST_STREAM = 'marker/shape/linelist'
-
-//object class
-UNKNOWN = '0'
-CAR = '1'
-TRUCK = '2'
-BUS = '3'
-BICYCLE = '4'
-MOTORBIKE = '5'
-PEDESTRIAN = '6'
-ANIMAL = '7'
 
 //transform standard
 var basepose = null          //current vehicle's orientation
