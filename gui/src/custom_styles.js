@@ -21,3 +21,22 @@ export const UI_THEME = {
   
     shadow: "0 2px 4px 0 rgba(0, 0, 0, 0.15)"
   };
+
+  export const OBJECT_THEME = {
+    ['Car']:{
+      fill_color: '#50B3FF80',
+      stroke_color: '#50B3FF'
+    },
+    ['Cyclist']:{
+      fill_color: '#957FCE80',
+      stroke_color: '#957FCE'
+},
+    ['Pedestrian']:{
+      fill_color: '#FFC6AF80',
+      stroke_color: '#FFC6AF'
+    },
+    ['Unknown']:{
+      fill_color: '#E2E2E280',
+      stroke_color: '#E2E2E2'
+    },
+  };

@@ -225,6 +225,7 @@ class Example extends PureComponent {
               car={CAR}
               xvizStyles={XVIZ_STYLE}
               viewMode={VIEW_MODE[settings.viewMode]}
+              showTooltip = {true}
             />
             <div id="hud">
               {/*

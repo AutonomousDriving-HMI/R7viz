@@ -5,8 +5,15 @@ const xvizServer = require('./xviz-server');
 //const sharp = require('sharp');
 const Parser = require('binary-parser').Parser;
 const parser = new Parser().floatle();
-var toUint8Array = require('base64-to-uint8array')
+const toUint8Array = require('base64-to-uint8array')
+const utmConverter = require('utm-latlng');
+const {Vector3,_Euler} = require('math.gl')
+const _ = require('lodash')
 
+var math = require("math.gl");
+//const object_build_helper = require('./xviz-object_coordinate_transform')
+//object_build_helper.getStartVehiclePose(null)
+//require('leaflet.utm')
 /***********Gwang - import parser to use parser.parse***************** */
 //require('@babel/register');
 //require('babel-polyfill');
@@ -17,20 +24,22 @@ var toUint8Array = require('base64-to-uint8array')
 
 //const parse = require('html-react-parser');
 
-
-
 //let car_heading_utm_north = 0; // global variable that stores heading/orientation of the car
 let x_dir_velocity = 0;
 let x_dir_acl = 0;
 let steering_degree = 0;
 let car_pos_utm = null; // global variable that stores car location in UTM
-let plannedPath = null; // global variable that hold an array of planned path
+let localPath_marker = null; // global variable that hold an array of local path
 let img = null;
 let pointcloud = null;
 let roll = null;
 let yaw = null;
 let pitch = null;
 
+let longitude = null;
+let latitude = null;
+
+var transformMatrix = null;
 
 const rosBridgeClient = new ROSLIB.Ros({
     url : 'ws://localhost:9090'
@@ -41,13 +50,14 @@ const listener = new ROSLIB.Topic({
     ros : rosBridgeClient,
     //name : '/navsat/fix'
     //name : '/vehicle/gps/fix' 
-    name : '/filter/positionlla'
+    //name : '/filter/positionlla'
+    name : '/current_pose'
 });
 
 // for planned path in UTM coordinate
 const listener2 = new ROSLIB.Topic({
     ros : rosBridgeClient,
-    name : '/PathPlanner/desired_path'
+    name : '/global_waypoints_rviz'
 });
 
 // for camera image
@@ -63,14 +73,6 @@ const listener4 = new ROSLIB.Topic({
   name : '/imu/data'
   //name : '/vehicle/imu/data_raw '
 });
-
-// for obstacle information
-/*
-const listener5 = new ROSLIB.Topic({
-    ros : rosBridgeClient,
-    name : '/planner_obstacles'
-});
-*/
 
 // for car acceleration
 const listener5 = new ROSLIB.Topic({
@@ -96,6 +98,18 @@ const listener8 = new ROSLIB.Topic({
   name : '/vehicle/steering_report'
 });
 
+// for obstacle information(type visual_marker_array)
+const listener9 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/detection/lidar_tracker/objects/visualization'
+  //name : '/planner_roads'   //make point data
+});
+
+const listener10 = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/detection/lidar_tracker/objects'
+});
+
 xvizServer.startListenOn(8081);
 
 process.on('SIGTERM', gracefulShutdown);      //is not supported on Windows
@@ -113,35 +127,101 @@ rosBridgeClient.on('close', function() {
     console.log('Connection to rosbridge websocket server closed.');
 });
 
+//UTM Converter object
+var utmobj = new utmConverter();
 
 listener.subscribe(function(message) {
     //var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
     //////let let is chanagble not const////
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
-    let {x, y, z} = message.vector
+    //let {x,y,z} = message.vector
+    //GPS position to UTM lat long (test)
+    /*utmdata = utmobj.convertUtmToLatLng(x,y,false,52,'s')
+    console.log(utmdata)*/
+    //car current pose (global map UTM pose
+    car_pos_utm = message.pose.position
+    let {x,y,z} = car_pos_utm;
+    //GPS converter UTM => WGS
+    let gps_data = utmobj.convertUtmToLatLng(x+450850,y+3951350,52,'S');
+    let gps_data_ = utmobj.convertUtmToLatLng(x,y,52,'S');
+    let {lat,lng} = gps_data;
+
+    //car orientation (heading)
+    vehicle_heading_list = QuaternionToRoll_Pitch_Yaw(message.pose.orientation)
+    //console.log("original_orientation",message.pose.orientation)
+    roll = vehicle_heading_list[0]
+    pitch = vehicle_heading_list[1]
+    yaw = vehicle_heading_list[2]
+    /*
+    console.log("pose,ori",x,y,z,roll,yaw,pitch)
+    var orientation = new math.Quaternion (message.pose.orientation.x,message.pose.orientation.y, message.pose.orientation.z, message.pose.orientation.w)
+    console.log("orientation",orientation)
+    var basepose = new math._Pose({x, y, z,roll,pitch,yaw})
+    console.log("basepose",basepose)
+    console.log("transformMatrix",basepose.getTransformationMatrix())
+    */
+    longitude=gps_data_.lat
+    latitude=gps_data_.lng
+
+    if(localPath_marker){
+      localPath = [];
+      for(let i =0; i<localPath_marker.length; i++){
+        var path_pose_utm = localPath_marker[i].pose.position
+        if(isInFront(car_pos_utm , yaw, path_pose_utm)){
+            localPath.push([
+              path_pose_utm.x - x,
+              path_pose_utm.y - y
+            ]);
+           }
+      }
+      if (localPath.length > 0) {
+        xvizServer.updateCarPath(localPath);
+      } else {
+        xvizServer.updateCarPath(null);
+      }
+    }
+    
+    //Location_data = UTMXYToLatLon(x+450850,y+3951350,false,52);
+    /*var gps_data = L.utm({x: message.pose.position.x, 
+                          y: message.pose.position.y,
+                          zone: 52,
+                          band: 'S'});
+    var coord = gps_data.latLng();*/
+    //console.log(coord)
+    //var latitude = Location_data[0]
+    //var longitude = Location_data[1]
+    //console.log("GPS",latitude,longitude)
+    //longitude = message.longitude;
+    //latitude = message.latitude
     //console.log('GPS data test')
     //console.log(message.latitude, message.longitude, message.altitude,parseFloat(timestamp));
-    xvizServer.updateLocation(x, y, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
+    //xvizServer.updateLocation(x, y, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
+    xvizServer.updateLocation(lat, lng, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
 });
+
 listener2.subscribe(function(message) {
-    plannedPath = message.poses;
+  localPath_marker = message.markers
+  //console.log("working test",localPath_marker)
 });
-/*
+
 listener3.subscribe(function(message) {
-  //document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
   let {width, height} = message;
   const data_ = toUint8Array(message.data)
   const data = Buffer.from(data_);
   //console.log(data)
-  //console.log(Buffer.isBuffer(data_))
-  //sleep(100000)
   createSharpImg(data);
-});*/
+});
 
 //listener 4 is the odometry of the car, location in UTM and orientation
 listener4.subscribe(function (message) {
     //let orientation = message.pose.pose.orientation;
-    roll, pitch, yaw = QuaternionToRoll_Pitch_Yaw(message.orientation);
+    vehicle_heading_list = QuaternionToRoll_Pitch_Yaw(message.orientation);
+    roll = vehicle_heading_list[0]
+    pitch = vehicle_heading_list[1]
+    yaw = vehicle_heading_list[2]
+    //let lang, long
+    //lang, long = UTMXYToLatLon(x,y,false,52);
+    //console.log("utm data",lang,long, "original",longitude,latitude);
     // quaternion to heading (z component of euler angle) ref: https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
     // positive heading denotes rotating from north to west; while zero means north
     //car_heading_utm_north = Math.atan2( 2*( orientation.z * orientation.w + orientation.x * orientation.y), 1 - 2 * ( orientation.z * orientation.z + orientation.y * orientation.y ));
@@ -170,6 +250,293 @@ listener4.subscribe(function (message) {
     }
     */
 });
+listener5.subscribe(function (message){
+  x_dir_acl = message.data;
+});/*
+listener6.subscribe(function (message){
+  //lidar sensor에 대한 xviz converter를 정의하는 function
+  pointcloud = message.is_dense;
+  //console.log("pointcloud :");
+  //console.log("function updateLIdar start");
+  var load_lidar_data_return = []
+  load_lidar_data_return = load_lidar_data(message)
+  const positions = (load_lidar_data_return[0]);
+  const colors = (load_lidar_data_return[1]);
+  //console.log("postionts", positions);
+  //var pointSize = load_lidar_data_return[1];
+  xvizServer.updateLidar(positions, colors);
+  //console.log("function updateLIdar finished");
+  //sleep(100);
+});*/
+//TwistStamped
+listener7.subscribe(function (message){
+  x_dir_velocity = message.twist.linear.x * 3.6; // m/s -> km/h
+});
+
+//SteeringReport
+listener8.subscribe(function (message){
+  steering_degree = radToDegree(message.steering_wheel_angle)
+});
+
+function _mapPoints(points,pose){
+  const origin = new Vector3([pose.position.x, pose.position.y, 0]);
+  return points.map(p =>{
+    p = [p.x,p.y,0];
+    //console.log("points",p)
+    //console.log(origin.add(p))
+    return origin
+      .clone()
+      .add(p)
+      .toArray()
+  });
+}
+/
+//makerarray-object detection data
+listener9.subscribe(function (message) {
+  marker_obstacles=[]
+  const makerMap = {}
+  //console.log("object markder")
+  //console.log("array",message)
+  //console.log("marker",message.markers)
+  for (let i = 0; i < message.markers.length; i++) {
+    let {ns, id,type,points,scale } = message.markers[i];
+    let { x, y, z } = message.markers[i].pose.position;
+    var orientation = message.markers[i].pose.orientation
+    //var marker_heading_list = QuaternionToRoll_Pitch_Yaw(orientation)
+    //let marker_geomatrix = utmobj.convertUtmToLatLng(x - car_pos_utm.x+450850,y - car_pos_utm.y+3951350,52,'S');
+    //let lat_ = marker_geomatrix.lat
+    //let lng_ = marker_geomatrix.lng;
+    let marker_class;
+    if(ns=="shape"){
+      if(points.length==24){
+        //console.log("points",message.markers[0].points)
+        //console.log("len",points.length)
+      }
+      marker_class=2
+    }else if (ns == "twist"){
+      console.log("twist_vector",message.markers[i].points)
+      console.log("scae",message.markers[i].scale)
+      console.log("len",message.markers[i].points.length)
+      console.log("why?",points.length)
+      marker_class=3
+    }else{
+      marker_class=null
+    }
+    pose={
+      x:x,
+      y:y,
+      z:z,
+      //lat: lat_,
+      //lng: lng_
+    }
+    /*
+    orientation = {
+      roll: marker_heading_list[0],
+      pitch: marker_heading_list[1],
+      yaw: marker_heading_list[2]
+    }*/
+    
+    if (car_pos_utm){
+      marker_obj ={
+        id: [ns, id].join('/'),
+        vertices: new Vector3([x - car_pos_utm.x, y - car_pos_utm.y, z]),
+        points: points,
+        geomatrix: pose,
+        //orientation: orientation,
+        object_class: marker_class,
+        object_build: marker_class,
+        scale: scale
+      }
+      marker_obstacles.push(marker_obj)
+    }
+  }
+  if (marker_obstacles.length > 0) {
+    
+    xvizServer.updateObstacles(marker_obstacles);
+  } else {
+    xvizServer.updateObstacles(null);
+  }
+});
+
+
+//autoware_perception 
+listener10.subscribe(function (message){
+  autoware_obstacles = []
+  //console.log("1")
+  //console.log("object_autoware",message.objects.length)
+  for (let i = 0; i < message.objects.length; i++) {
+    //console.log(message.objects[i])
+    let { id, shape, state, semantic} = message.objects[i];
+    let { x, y, z } = state.pose_covariance.pose.position
+    let orientation_ = state.pose_covariance.pose.orientation
+    var object_heading_list = QuaternionToRoll_Pitch_Yaw(orientation_)
+    //var rotation = quaternionToEuler(orientation_)
+    
+    let object_geomatrix = utmobj.convertUtmToLatLng(x - car_pos_utm.x+450850,y - car_pos_utm.y+3951350,52,'S');
+    let lat_ = object_geomatrix.lat
+    let lng_ = object_geomatrix.lng;
+    //console.log("twist",shape.dimensions)
+
+    //console.log("car yaw ptich roll,",yaw,pitch,roll)
+    if (car_pos_utm){
+      let twist =[{x: 0, y: 0, z: 0},{x:0 , y:shape.dimensions.y, z:0}]
+    
+      var pose={
+        x:x,
+        y:y,
+        z:z,
+        lat: lat_,
+        lng: lng_
+      }
+      
+      var orientation = {
+        roll: object_heading_list[0],
+        pitch: object_heading_list[1],
+        yaw: object_heading_list[2],
+        car_yaw: yaw,
+        car_pitch : pitch,
+        car_roll : roll
+      }
+
+      var autoware_obj = {
+        id: id,
+        vertices:new Vector3([x - car_pos_utm.x, y - car_pos_utm.y, z]),
+        car_utm: car_pos_utm,
+        geomatrix: pose,
+        orientation: orientation,
+        object_class: semantic.type,
+        object_build: shape.type,
+        scale: shape.dimensions,
+        points : twist
+      }
+      
+      autoware_obstacles.push(autoware_obj);
+    }
+  }
+  if (autoware_obstacles.length > 0) {
+    //console.log("to server",autoware_obstacles)
+    xvizServer.updateObstacles(autoware_obstacles);
+  } else {
+    xvizServer.updateObstacles(null);
+  }
+});
+
+function FootpointLatitude(y){
+  const sm_a = 6378137.0;
+  const sm_b = 6356752.314;
+  var y_, alpha_, beta_, gamma_, delta_, epsilon_, n;
+  var result;
+
+  //calculate n 
+  n = (sm_a - sm_b)/(sm_a + sm_b);
+  //console.log("n",n)
+  alpha_ = ((sm_a+sm_b)/2.0)*(1+ Math.pow(n,2.0)/4)+(Math.pow(n,4.0)/64);
+  //console.log("alpha",alpha_)
+  y_ = y/alpha_;
+  beta_  = (3.0 * n/2.0)+(-27.0 * Math.pow(n, 3.0)/32.0)+(269.0 * Math.pow(n, 5.0)/512.0);
+  gamma_ = (21.0 * Math.pow(n, 2.0)/16.0)+(-55.0 * Math.pow(n, 4.0)/32.0);
+  delta_ = (151.0 * Math.pow(n, 3.0)/96.0)+(-417.0 * Math.pow(n, 5.0)/128.0);
+  epsilon_ = (1097.0 * Math.pow(n, 4.0) / 512.0);
+  result = y_ + (beta_ * Math.sin(2.0 * y_))
+              +(gamma_ * Math.sin(4.0 * y_))
+              +(delta_ * Math.sin(6.0 * y_))
+              +(epsilon_ * Math.sin(8.0 * y_));
+  return result
+}
+
+function MapXYToLatLon(x, y ,lambda0){
+  
+  var latitude, longitude;
+  const sm_a = 6378137.0;
+  const sm_b = 6356752.314;
+  var phif, Nf, Nfpow, nuf2, ep2, tf, tf2, tf4, cf;
+  var x1frac, x2frac, x3frac, x4frac, x5frac, x6frac, x7frac, x8frac;
+  var x2poly, x3poly, x4poly, x5poly, x6poly, x7poly, x8poly;
+  
+  // Get the value of phif, the footpoint latitude.
+  phif = FootpointLatitude(y);
+  console.log("phif",phif)
+  ep2 = (Math.pow(sm_a, 2.0) - Math.pow(sm_b, 2.0))/Math.pow(sm_b, 2.0);
+  cf = Math.cos(phif);
+  nuf2 = ep2 * Math.pow(cf, 2.0);
+  Nf = Math.pow(sm_a, 2.0) / (sm_b * Math.sqrt(1 + nuf2));
+  Nfpow = Nf;
+
+  //calculate tf 
+  tf = Math.tan(phif);
+  tf2 = tf * tf;
+  tf4 = tf2 * tf2;
+
+  //calculate fractional coefficients for x**n in the equations
+  //below to simplify the expressions for latitude and longitude.
+  x1frac = 1.0 / (Nfpow * cf);
+  Nfpow = Nf* Nf;   // now equals Nf**2)
+  x2frac = tf / (2.0 * Nfpow);
+  Nfpow = Nf* Nf;   //now equals Nf**3) 
+  x3frac = 1.0 / (6.0 * Nfpow * cf);
+  Nfpow = Nf* Nf;   //now equals Nf**4) 
+  x4frac = tf / (24.0 * Nfpow);
+  Nfpow = Nf* Nf;   //now equals Nf**5)
+  x5frac = 1.0 / (120.0 * Nfpow * cf);
+  Nfpow = Nf* Nf;  // now equals Nf**6)
+  x6frac = tf / (720.0 * Nfpow);
+  Nfpow = Nf* Nf;  //now equals Nf**7)
+  x7frac = 1.0 / (5040.0 * Nfpow * cf);
+  Nfpow = Nf* Nf;  // now equals Nf**8) 
+  x8frac = tf / (40320.0 * Nfpow);
+
+  //calculate polynomial coefficients for x**n.
+  // x**1 does not have a polynomial coefficient. 
+  x2poly = -1.0 - nuf2;
+  x3poly = -1.0 - 2 * tf2 - nuf2;
+  x4poly = 5.0 + 3.0 * tf2 + 6.0 * nuf2 - 6.0 * tf2 * nuf2
+    - 3.0 * (nuf2 * nuf2) - 9.0 * tf2 * (nuf2 * nuf2);
+  x5poly = 5.0 + 28.0 * tf2 + 24.0 * tf4 + 6.0 * nuf2 + 8.0 * tf2 * nuf2;
+  x6poly = -61.0 - 90.0 * tf2 - 45.0 * tf4 - 107.0 * nuf2
+    + 162.0 * tf2 * nuf2;
+  x7poly = -61.0 - 662.0 * tf2 - 1320.0 * tf4 - 720.0 * (tf4 * tf2);
+  x8poly = 1385.0 + 3633.0 * tf2 + 4095.0 * tf4 + 1575 * (tf4 * tf2); 
+  
+  //Calculate latitude 
+  latitude = phif + x2frac * x2poly * (x * x)
+    + x4frac * x4poly * Math.pow(x, 4.0)
+    + x6frac * x6poly * Math.pow(x, 6.0)
+    + x8frac * x8poly * Math.pow(x, 8.0);
+
+  //Calculate longitude 
+  longitude = lambda0 + x1frac * x
+    + x3frac * x3poly * Math.pow(x, 3.0)
+    + x5frac * x5poly * Math.pow(x, 5.0)
+    + x7frac * x7poly * Math.pow(x, 7.0);
+
+  return [latitude, longitude]
+}
+
+function UTMCentralMeridian(zone){
+  var cmeridian;
+
+  cmeridian = Degreetoradian(-183.0+ (zone*6.0));
+  return cmeridian
+}
+
+function UTMXYToLatLon(x, y ,southhemi, zone){
+  const UTMScaleFactor = 0.9996;
+  let latitude,longitude;
+  x = x- 500000.0;
+  x = x/UTMScaleFactor;
+  if (southhemi){
+    y = y- 10000000.0;
+  }
+  y =y/UTMScaleFactor;
+
+  var cmeridian = UTMCentralMeridian(zone);
+
+  gpsdata = MapXYToLatLon(x, y, cmeridian)
+  latitude = radToDegree(gpsdata[0])
+  longitude = radToDegree(gpsdata[1])
+  return [latitude,longitude]
+}
+
 /*
 listener5.subscribe(function (message) {
     obstacles = [];
@@ -190,37 +557,6 @@ listener5.subscribe(function (message) {
     }
 });
 */
-
-listener5.subscribe(function (message){
-  x_dir_acl = message.data;
-});
-
-listener6.subscribe(function (message){
-  //lidar sensor에 대한 xviz converter를 정의하는 function
-  pointcloud = message.is_dense;
-  //console.log("pointcloud :");
-  //console.log("function updateLIdar start");
-  var load_lidar_data_return = []
-  load_lidar_data_return = load_lidar_data(message)
-  const positions = (load_lidar_data_return[0]);
-  const colors = (load_lidar_data_return[1]);
-  //console.log("postionts", positions);
-  //var pointSize = load_lidar_data_return[1];
-  xvizServer.updateLidar(positions, colors);
-  //console.log("function updateLIdar finished");
-  //sleep(100);
-
-});
-
-//TwistStamped
-listener7.subscribe(function (message){
-  x_dir_velocity = message.twist.linear.x * 3.6; // m/s -> km/h
-});
-
-//SteeringReport
-listener8.subscribe(function (message){
-  steering_degree = radToDegree(message.steering_wheel_angle)
-});
 
 let maxHeight = null;
 let maxWidth = null;
@@ -246,6 +582,25 @@ async function createSharpImg(data) {
   xvizServer.updateCameraImage(image, resizeWidth, resizeHeight);
   //xvizServer.updateCameraImage(img,width_,height_);
 }
+function quaternionToEuler({w,x,y,z}){
+  const ysqr = y * y;
+  const t0 = -2.0 * (ysqr + z * z) + 1.0;
+  const t1 = +2.0 * (x * y + w * z);
+  let t2 = -2.0 * (x * z - w * y);
+  const t3 = +2.0 * (y * z + w * x);
+  const t4 = -2.0 * (x * x + ysqr) + 1.0;
+
+  t2 = t2 > 1.0 ? 1.0 : t2;
+  t2 = t2 < -1.0 ? -1.0 : t2;
+
+  const ans = {};
+  ans.pitch = Math.asin(t2);
+  ans.roll = Math.atan2(t3, t4);
+  ans.yaw = Math.atan2(t1, t0);
+
+  return ans;
+}
+
 
 function QuaternionToRoll_Pitch_Yaw(message){
   const {x, y, z, w} =  message;
@@ -253,7 +608,7 @@ function QuaternionToRoll_Pitch_Yaw(message){
   const roll_ = Math.atan2(2*x*w + 2*y*z, 1 - 2*x*x - 2*y*y);
   const pitch_ =  Math.asin(2*w*y + 2*z*x);
   const yaw_ = Math.atan2(2*z*w + 2*x*y, 1 - 2*y*y - 2*z*z);
-  return roll_, pitch_, yaw_;
+  return [roll_, pitch_, yaw_];
 }
 
 
@@ -286,6 +641,9 @@ function getResizeDimension(width__, height__){
 
 function radToDegree(radian){
   return radian*(180/Math.PI)
+}
+function Degreetoradian(degree){
+  return degree*(Math.PI/180)
 }
 
 function readBinaryData(binary) {
@@ -355,7 +713,8 @@ function load_lidar_data(lidar_msg) {
   //console.log("Enter load_lidar_Data function");
   const pointSize = lidar_msg.point_step;
   const pointsCount = lidar_msg.row_step / pointSize;
-  
+  console.log(pointSize,pointsCount)
+
   let points_binary = [];
   let intensity_binary = [];
   //let colors = []; //colors 변경
@@ -490,6 +849,7 @@ function distance(UTMlocation1, UTMlocation2) {
 }
 // return a boolean that will be true if targetLocation is in front of carLocation
 // give the heading of the car (zero points to north and positive denotes rotating to west)
+
 function isInFront(carLocationUTM, heading, targetLocationUTM) {
     let delta_x = targetLocationUTM.x - carLocationUTM.x;
     let delta_y = targetLocationUTM.y - carLocationUTM.y;
