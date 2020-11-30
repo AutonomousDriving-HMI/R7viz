@@ -28,6 +28,7 @@ import React, { PureComponent } from 'react';
 import { render } from 'react-dom';
 import { setXVIZConfig } from '@xviz/parser';
 import {
+  _XVIZMetric as XVIZMetric,
   XVIZLiveLoader,
   LogViewer,
   VIEW_MODE,
@@ -36,16 +37,23 @@ import {
   MeterWidget,
   TrafficLightWidget,
   TurnSignalWidget,
+  LogViewerStats,
+  XVIZWorkerFarmStatus,
+  XVIZWorkersMonitor,
+  XVIZWorkersStatus 
 } from 'streetscape.gl';
 import { ThemeProvider, Form, Button } from '@streetscape.gl/monochrome';
 
-import ROSLIB from 'roslib';
-import { XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS, XVIZ_STYLE, CAR } from './constants';
+//import ROSLIB from 'roslib';
+import { XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS, XVIZ_STYLE, CAR, STYLES } from './constants';
 
 /*custom import*/
 //import imgstyles from './image.css';
 import { UI_THEME } from './custom_styles'
+import MapView from './mapview';
 import './stylesheets/main.scss';
+import SteeringInfo from './steering-info';
+//import {FpsView} from "react-fps";
 //import "./index.scss";
 
 setXVIZConfig(XVIZ_CONFIG);
@@ -66,27 +74,16 @@ if (!mapStyleRef) {
 
 // get camera image directly from rosbridge instead of xviz
 // for better performance
-const rosBridgeClient = new ROSLIB.Ros({
-  url: 'ws://' + server + ':9090'
-});
-const roslistener = new ROSLIB.Topic({
-  ros: rosBridgeClient,
-  name: '/blackfly/image_color/compressed'
-  //name : '/usb_cam/image_raw'
-});
-roslistener.subscribe(function (message) {
-  document.getElementById("camera-image").src = "data:image/jpg;base64," + message.data;
-});
 
 const exampleLog = new XVIZLiveLoader({
   logGuid: 'mock',
-  bufferLength: 4,
+  bufferLength: 8,
   serverConfig: {
     defaultLogLength: 5,
     serverUrl: 'ws://' + server + ':8081'
   },
   worker: true,
-  maxConcurrency: 2
+  maxConcurrency: 3
 });
 
 /**Wheel_Widget_Style, Meter_Widget_Style, Turn_Signal_Widget_Style
@@ -134,18 +131,81 @@ const AUTONOMY_STATE = {
 
 class Example extends PureComponent {
   state = {
-    log: exampleLog.on('error', console.error),
+    //log: exampleLog.on('error', console.error),
+    log: exampleLog,
     settings: {
-      viewMode: 'PERSPECTIVE'
+      viewMode: 'PERSPECTIVE',
+      showDebug: true
     },
     serverURL: server,
     mapToken: mapboxToken,
-    mapStyle: mapStyleRef
+    mapStyle: mapStyleRef,
+
+    /**Debug 하기 위한 state */
+    panels: [],
+    // LogViewer perf stats
+    statsSnapshot: {},
+    // XVIZ Parser perf stats
+    backlog: 'NA',
+    dropped: 'NA',
+    workers: {}
   };
 
   componentDidMount() {
-    this.state.log.connect();
+    /**토론토 대학에서 정의한 componentDidmount */
+    //this.state.log.connect();
+
+    /***********************for debug start************************** */
+    /**디버그를 위해서 다시 정의한 componentDidmount */
+    const { log } = this.state;
+    log
+      .on('ready', () => {
+        const metadata = log.getMetadata();
+        this.setState({
+          panels: Object.keys((metadata && metadata.ui_config) || {})
+        });
+      })
+      .on('error', console.error)
+      .connect();
+
+    this.xvizWorkerMonitor = new XVIZWorkersMonitor({
+      numWorkers: log.options.maxConcurrency,
+      reportCallback: ({ backlog, dropped, workers }) => {
+        this.setState({ backlog, dropped, workers });
+      }
+    });
+    log._debug = (event, payload) => {
+      if (event === 'parse_message') {
+        this.xvizWorkerMonitor.update(payload);
+      }
+    };
+    this.xvizWorkerMonitor.start();
+
+    /***********************for debug end************************** */
+
   }
+
+  /***********************for debug start************************** */
+  componentWillUnmount() {
+    if (this.xvizWorkerMonitor) {
+      this.xvizWorkerMonitor.stop();
+    }
+  }
+
+  _renderPerf = () => {
+    const {statsSnapshot, backlog, dropped, workers} = this.state;
+    return this.state.settings.showDebug ? (
+      <div>
+        <hr />
+        <XVIZWorkerFarmStatus backlog={backlog} dropped={dropped} />
+        <XVIZWorkersStatus workers={workers} />
+        <hr />
+        <LogViewerStats statsSnapshot={statsSnapshot} />
+      </div>
+    ) : null;
+  };
+
+  /***********************for debug end************************** */
 
   _onSettingsChange = changedSettings => {
     this.setState({
@@ -171,29 +231,32 @@ class Example extends PureComponent {
     }
     window.location.replace(newPage);
   }
-
   render() {
-    const { log, settings, mapStyle, mapToken } = this.state;
+    const { log, settings, mapStyle, mapToken, panels } = this.state;
     console.log(log);
     return (
       <div id="container">
+        {/*<FpsView width={240} height={180} bottom={60} right={80}/>*/}
         <div id="control-panel">
-          <div>
-            <div id="logo">
-              {/*a 태그(Tag)는 문서를 링크 시키기 위해 사용하는 태그(Tag)이다.*/}
-              {/*href : 연결할 주소를 지정 한다.
+          <div id="logo">
+            {/*a 태그(Tag)는 문서를 링크 시키기 위해 사용하는 태그(Tag)이다.*/}
+            {/*href : 연결할 주소를 지정 한다.
                   target : 링크를 클릭 할 때 창을 어떻게 열지 설정 한다.
                   title : 해당 링크에 마우스 커서를 올릴때 도움말 설명을 설정 한다.*/}
-              <a href="https://www.dgist.ac.kr/">
-                <img src="./assets/logo.jpg" alt="Digst Logo" />
-              </a>
-            </div>
-            
+            <a href="https://www.dgist.ac.kr/">
+              <img src="./assets/logo.jpg" alt="Digst Logo" />
+            </a>
           </div>
-          <XVIZPanel log={log} name="Metrics" />
           <hr />
           <XVIZPanel log={log} name="Camera" />
           <hr />
+          <XVIZPanel
+            log={log}
+            name="Metrics"
+            //style={XVIZ_PANEL_STYLE}
+          />
+          <hr />
+          <SteeringInfo log={log} state={this.state}/>
           <hr />
           <Form
             data={APP_SETTINGS}
@@ -205,6 +268,7 @@ class Example extends PureComponent {
             log={log}
             onSettingsChange={this._onStreamSettingChange}
           />
+          {this._renderPerf()}
           <hr />
           <Form
             data={CONFIG_SETTINGS}
@@ -218,15 +282,25 @@ class Example extends PureComponent {
         </div>
         <div id="log-panel">
           <div id="map-view">
-            <LogViewer
+          {<MapView
               log={log}
-              mapboxApiAccessToken={mapToken}
-              mapStyle={mapStyle}
+              settings={settings}
+              onSettingsChange={this._onSettingsChange}
+              mapToken = {mapToken}
+              mapStyle = {mapStyle}
+              debug= {payload => this.setState({statsSnapshot: payload})}
+               />
+            }
+            {/*<LogViewer
+              log={log}
+              //mapboxApiAccessToken={mapToken}
+              //mapStyle={mapStyle}
               car={CAR}
               xvizStyles={XVIZ_STYLE}
+              customLayers={customLayers}
               viewMode={VIEW_MODE[settings.viewMode]}
-              showTooltip = {true}
-            />
+            />*/}
+
             <div id="hud">
               {/*
                 add TurnSignalWidget, TrafficLightWidget, MeterWidget
@@ -266,8 +340,6 @@ class Example extends PureComponent {
               />
               <hr />
             </div>
-
-
           </div>
         </div>
       </div>

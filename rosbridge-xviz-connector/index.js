@@ -127,10 +127,12 @@ rosBridgeClient.on('close', function() {
     console.log('Connection to rosbridge websocket server closed.');
 });
 
+
 //UTM Converter object
 var utmobj = new utmConverter();
 
-listener.subscribe(function(message) {
+
+listener.subscribe(function (message) {
     //var msgNew = 'Received message on ' + listener.name + JSON.stringify(message, null, 2) + "\n";
     //////let let is chanagble not const////
     let timestamp = `${message.header.stamp.secs}.${message.header.stamp.nsecs}`;
@@ -742,6 +744,19 @@ function gracefulShutdown() {
 function sleep (delay) {
   var start = new Date().getTime();
   while (new Date().getTime() < start + delay);
+}
+
+//fps check function
+function requestAnimFrame() {
+
+  if(!lastCalledTime) {
+     lastCalledTime = Date.now();
+     fps = 0;
+     return;
+  }
+  delta = (Date.now() - lastCalledTime)/1000;
+  lastCalledTime = Date.now();
+  fps = 1/delta;
 }
 
 /* *******************************************

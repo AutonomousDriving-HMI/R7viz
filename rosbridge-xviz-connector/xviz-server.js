@@ -148,8 +148,33 @@ xvizMetaBuider
     .unit('m/s^2');
 
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
+//xvizMetaBuider.ui(xvizUIBuilder);
+/************************metrics start************************************* */
+
+const panel = xvizUIBuilder.panel({name: 'Metrics'});
+const container = xvizUIBuilder.container({
+    name: 'Metrics Panel',
+    layout: 'vertical'
+  });
+const metrics1 = xvizUIBuilder.metric({streams: ['/vehicle/velocity'], title: 'Velocity'});
+const metrics2 = xvizUIBuilder.metric({streams: ['/vehicle/acceleration'], title: 'Acceleration'});
+const metrics3 = xvizUIBuilder.metric({streams: ['/vehicle/wheel_angle'], title: 'Wheel_Angle'});
+
+container.child(metrics1);
+container.child(metrics2);
+container.child(metrics3);
+xvizUIBuilder.child(panel).child(container);
+
+const ui = xvizUIBuilder.getUI();
+console.log(ui);
+
+//xvizMetaBuider.ui(xvizUIBuilder);
+/************************metrics end************************************* */
+
+
 xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
+console.log(_metadata);
 //console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 // it turns out we cannot use a constant global builder, as all the primitives keeps adding up
 const xvizBuilder = new XVIZBuilder({
@@ -224,11 +249,23 @@ function tryServeFrame(){
     // frame is ready, serve it to all live connections
     let xvizBuilder = new XVIZBuilder({metadata: _metadata});
     if (_locationCache) {
+        /**DGIST OSM map does not specify height
+         * We set the height of the car at zero.
+         * Use _locationCache.altitude' when using a map with height
+          */
+        let no_altitude = 0;
         xvizBuilder.pose('/vehicle_pose')
         .timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .position(0,0,0)//.orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw)
             .orientation(0,0,_locationCache.yaw);
+
+  /*
+            //.mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
+            .mapOrigin(_locationCache.longitude, _locationCache.latitude, no_altitude)
+            .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw+1.57*2);
+            */
+
 
         xvizBuilder.timeSeries('/vehicle/velocity')
         .timestamp(_locationCache.timestamp)
@@ -285,8 +322,8 @@ function tryServeFrame(){
         //console.log(xvizFrame);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
-            _locationCache = null
-            _lidarCache = null
+            //_locationCache = null;
+            _lidarCache = null;
         });
     }
     return;
@@ -389,6 +426,7 @@ class ConnectionContext {
     }
 }
 
+
 module.exports = {
     startListenOn: function (portNum) {
         console.log(`xviz server starting on ws://localhost:${portNum}`);
@@ -420,7 +458,7 @@ module.exports = {
     updateLidar : function(pt, col)  {
         addLidarDataToCache(pt, col);
         //console.log("new updatelidar data (point, color): ", pt, col)
-        tryServeFrame();
+        //tryServeFrame();
 
     },
 
@@ -436,6 +474,12 @@ module.exports = {
         //console.log("new image ", image_data.length);
         // Initialize a new ImageData object
         add_cameraImageCache(image_data, width, height)
-        tryServeFrame();
+        //tryServeFrame();    
+    },
+    init_time: function(time){
+        lastCalledTime = time
+    },
+    lidar_time: function(time){
+        LidarTime = time
     }
 };
