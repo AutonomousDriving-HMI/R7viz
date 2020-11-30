@@ -300,6 +300,7 @@ class Example extends PureComponent {
               customLayers={customLayers}
               viewMode={VIEW_MODE[settings.viewMode]}
             />*/}
+
             <div id="hud">
               {/*
                 add TurnSignalWidget, TrafficLightWidget, MeterWidget

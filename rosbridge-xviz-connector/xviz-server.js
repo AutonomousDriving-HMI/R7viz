@@ -3,14 +3,18 @@ xviz styling
 https://github.com/uber/xviz/blob/master/docs/protocol-schema/style-specification.md#point
 */
 const WebSocket = require('ws');
+const ObjConveter= require('./xviz-object_converter')
 const process = require('process');
-
 const {XVIZMetadataBuilder, XVIZBuilder, XVIZUIBuilder, encodeBinaryXVIZ} = require("@xviz/builder");
+const { Z_BLOCK } = require('zlib');
+const {Vector3,_Pose} = require('math.gl')
+const math = require('math.gl')
+const _ = require('lodash')
 
+//import {OBJECT_PALATTE} from '../gui/src/src/custom_styles.js';
 const xvizMetaBuider = new XVIZMetadataBuilder();
 const xvizUIBuilder = new XVIZUIBuilder({});
 
-//where we define the pose of the car based on the navsat data 
 xvizMetaBuider.stream('/vehicle_pose')
     .category("pose");
 xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
@@ -19,17 +23,97 @@ xvizMetaBuider.stream('/vehicle/trajectory')
 	.category('primitive')
     .type('polyline').streamStyle({
         stroke_color: '#47B27588',// a nice transparent green
-        stroke_width: 1.5,
+        stroke_width: 2,
         stroke_width_min_pixels: 1
     });
-xvizMetaBuider.stream('/tracklets/objects')
+
+xvizMetaBuider.stream(VECHILE_STREAM)
     .category('primitive')
-    .type('polygon').streamStyle({
-        "extrude": true,
-        "fill_color": "#50B3FF80",
-        "stroke_color": "#FF0000"
+    .type('polygon').coordinate('VEHICLE_RELATIVE')//.coordinate('VEHICLE_RELATIVE')/////
+    .streamStyle({
+        extruded: true,
+        fill_color: '#00000080'
+    })
+    .styleClass(UNKNOWN, {
+        fill_color: '#FFC6AF80',
+        stroke_color: '#FFC6AF',     //orange
+    })
+    .styleClass(CAR, {
+        fill_color: '#7DDDD780',
+        stroke_color: '#7DDDD7'     //blue
+    })
+    .styleClass(TRUCK, {
+        fill_color: '#267E6380',
+        stroke_color: '#267E63'
+    })
+    .styleClass(BUS, {
+        fill_color: '#957FCE80', 
+        stroke_color: '#957FCE',    
+    })
+    .styleClass(BICYCLE, {
+        fill_color: '#DA70BF80',
+        stroke_color: '#DA70BF'
+    })
+    .styleClass(MOTORBIKE, {
+        fill_color: '#EEA2AD80',
+        stroke_color: '#EEA2AD'  //purple
+    })
+
+xvizMetaBuider.stream(PEDSTRIAN_STREAM)
+    .category('primitive')
+    .type('polygon').coordinate('VEHICLE_RELATIVE')
+    .streamStyle({
+        fill_color: '#00000080'
+    })
+    .styleClass(PEDESTRIAN, {
+        fill_color: '#FEC56480',
+        stroke_color: '#FEC564'
+    })
+    .styleClass(ANIMAL, {
+        fill_color: '#D6A00080',
+        stroke_color: '#D6A000'
+    })
+    .pose({
+        x: 0,
+        y: 0,
+        z: 0
+    });    /*
+    .styleClass(category.streamName,OBJECT_PALATTE[category.streamName]) 
+    /*.pose(this.FIXTURE_TRANSFORM_POSE*/
+xvizMetaBuider.stream('tracklets_text')
+    .category('primitive').type('text')
+    .streamStyle({
+        size: 30,
+        fill_color: '#DCDCCD'
+    })
+    .coordinate('VEHICLE_RELATIVE')
+    .pose({
+        x: 0,
+        y: 0,
+        z: 0
     });
-    
+xvizMetaBuider.stream(Arrow_STREAM)
+    .category('primitive')
+    .type('polyline')
+    .coordinate('VEHICLE_RELATIVE')
+    .pose({
+        x: 0,
+        y: 0,
+        z: 0
+    }); 
+xvizMetaBuider.stream(LINELIST_STREAM)
+    .category('primitive') 
+    .type('polyline').coordinate('IDENTITY')
+    .streamStyle({
+        fill_color: '#00000080',//will be change
+        stroke_width: 0.5,
+        stroke_width_min_pixels: 1
+    })
+    .pose({
+        x: 0,
+        y: 0,
+        z: 0
+    }); 
 xvizMetaBuider
     .stream('/lidar/points')
     //.stream('/point-cloud')
@@ -47,7 +131,6 @@ xvizMetaBuider
         y: 0,
         z: 0
     });
-
 xvizMetaBuider
     .stream('/vehicle/velocity')
     .category('time_series')
@@ -97,7 +180,6 @@ console.log(_metadata);
 const xvizBuilder = new XVIZBuilder({
     metadata: _metadata
 });
-
 //const _mockImage = require('fs').readFileSync("./mock.jpg").toString('base64');
 
 // Global cache for location and trajectory
@@ -125,7 +207,6 @@ function connectionId() {
 }
 
 // add a new location message 
-
 function addLocationToCache(lat, lng, alt, roll, ptich, yaw,speed,steering, accel, time) {
 
     _locationCache = {
@@ -140,7 +221,6 @@ function addLocationToCache(lat, lng, alt, roll, ptich, yaw,speed,steering, acce
         x_dir_accelation :accel,
         timestamp: time,
     };
-    //console.log("new pose (time, lat, lng, heading): ", time, lat, lng, heading)
 }
 
 //Gwang - make addLidarDataToCache
@@ -176,21 +256,28 @@ function tryServeFrame(){
         let no_altitude = 0;
         xvizBuilder.pose('/vehicle_pose')
         .timestamp(_locationCache.timestamp)
+            .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
+            .position(0,0,0)//.orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw)
+            .orientation(0,0,_locationCache.yaw);
+
+  /*
             //.mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, no_altitude)
             .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw+1.57*2);
+            */
+
 
         xvizBuilder.timeSeries('/vehicle/velocity')
         .timestamp(_locationCache.timestamp)
-        .value(_locationCache.x_dir_velocity);
+            .value(_locationCache.x_dir_velocity);
         
         xvizBuilder.timeSeries('/vehicle/acceleration')
         .timestamp(_locationCache.timestamp)
-        .value(_locationCache.x_dir_accelation);
+            .value(_locationCache.x_dir_accelation);
 
         xvizBuilder.timeSeries('/vehicle/wheel_angle')
         .timestamp(_locationCache.timestamp)
-        .value(_locationCache.degree_of_steering);
+            .value(_locationCache.degree_of_steering);
 
         if (_trajectoryCache) {
             xvizBuilder.primitive('/vehicle/trajectory').polyline(_trajectoryCache);
@@ -198,15 +285,11 @@ function tryServeFrame(){
             //xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]);
         }
         if (_ObstaclesCache) {
-            //console.log("obstacle!!!", _ObstaclesCache[0]);
             for (i=0;i<_ObstaclesCache.length;i++){
-                // build triangle around that obstacle location
-                xvizBuilder.primitive('/tracklets/objects').polygon([
-                    [_ObstaclesCache[i][0]-0.3, _ObstaclesCache[i][1]-0.3, 0],
-                    [_ObstaclesCache[i][0]+0.3, _ObstaclesCache[i][1]-0.3, 0],
-                    [_ObstaclesCache[i][0], _ObstaclesCache[i][1]+0.424, 0],
-                    [_ObstaclesCache[i][0]-0.3, _ObstaclesCache[i][1]-0.3, 0]
-                ]).style({height:1.5});
+                //console.log(_ObstaclesCache[i])
+                ObjConveter.ObjectType_Builder(_ObstaclesCache[i],xvizBuilder,i)
+                /*xvizBuilder.primitive('tracklets_text').position([_ObstaclesCache[i][0],_ObstaclesCache[i][1],3])
+                .text(object_id);*/
             }
         }
         //jaeketun revise camera xvizbuilder
@@ -215,7 +298,6 @@ function tryServeFrame(){
             xvizBuilder.primitive('/camera/image_00').
                 image(nodeBufferToTypedArray(_cameraImageCache.image_data), 'png')
                 .dimensions(_cameraImageCache.width,_cameraImageCache.height)
-                //.dimensions(33, 11)
                 .position([1, 1, 1]);
             //_newCameraImageFlag = false;
             //console.log("serving image ", _cameraImageCache.length);
@@ -235,9 +317,9 @@ function tryServeFrame(){
         }
         //console.log(xvizBuilder.getMessage());
         const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(),{});
+        //console.log("frame time",_frameTimer)
         //const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
         //console.log(xvizFrame);
-        //sleep(100);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
             //_locationCache = null;
@@ -246,6 +328,29 @@ function tryServeFrame(){
     }
     return;
 }
+//define object's status
+function object_type_info(type,i){
+    //object = person
+    if (type ==0){
+        object_width = 1.4;
+        object_depth = 1.2;
+        object_id = [NAMESPACE_PEDSTRIAN,i].join('/')
+        object_height = 2.5;
+    //object = vechile
+    }else if (type ==1){
+        object_width = 1.8;
+        object_depth = 3.6;
+        object_id = [NAMESPACE_VECHILE,i].join('/')
+        object_height = 2;
+    //object =obstacle
+    }else if (type ==2){
+        object_width = 2;
+        object_depth = 2;
+        object_height = 2;
+        object_id = [NAMESPACE_OBSTACLE,i].join('/')
+    }
+}
+
 //using camrea xviz builder (base64 -> uint8Array (camera input type))
 function nodeBufferToTypedArray(buffer){
     const typedArray = new Uint8Array(buffer);
@@ -320,9 +425,7 @@ class ConnectionContext {
         //this.log(`< sent frame.`);
     }
 }
-function sleep(t){
-    return new Promise(resolve=>setTimeout(resolve,t));
- }
+
 
 module.exports = {
     startListenOn: function (portNum) {
@@ -343,7 +446,7 @@ module.exports = {
 
     close: function(){
         console.log("xviz server shutting down");
-        //clearInterval(_frameTimer);
+        //learInterval(_frameTimer);
         _wss.close();
     },
     //jaekeun - car status approach
@@ -363,8 +466,8 @@ module.exports = {
         _trajectoryCache = positions;
     },
 
-    updateObstacles: function(positions) {
-        _ObstaclesCache = positions;
+    updateObstacles: function(obj_list) {
+        _ObstaclesCache = obj_list;
     },
 
     updateCameraImage: function(image_data,width,height) {
