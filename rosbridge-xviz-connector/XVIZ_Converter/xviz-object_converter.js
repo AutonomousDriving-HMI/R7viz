@@ -12,10 +12,11 @@ you should "yarn first"
 
 //jaekeun object info name space
 const VECHILE_STREAM = '/objects/shape/vehicle'
-const PEDSTRIAN_STREAM = '/objects/shape/pedestrian'
-const Arrow_STREAM = '/objects/arrow'
 const UNKNOWN_STREAM = '/objects/shape/vehicle/unknown'
-const LINELIST_STREAM = 'marker/shape/linelist'
+const PEDSTRIAN_STREAM = '/objects/shape/pedestrian'
+const ARROW_STREAM = '/objects/direction/arrow'
+const LINELIST_STREAM = 'objects/shape/linelist'
+const TEXT_STREAM = '/labal'
 
 //transform standard
 var basepose = null          //current vehicle's orientation
@@ -84,21 +85,21 @@ function TranformVertices(marker) {
 
     return { label_position, transform_vertices }
         xvizBuilder
-    .primitive(Arrow_STREAM)
+    .primitive(ARROW_STREAM)
     .polyline(tarnsline)
     .style(
         {stroke_color:'#FEC56480'       //orange transform coordinate
         })
     
     xvizBuilder
-    .primitive(Arrow_STREAM)
+    .primitive(ARROW_STREAM)
     .polyline(tarnsline2)
     .style(
             {
                 stroke_color: '#7DDDD7'     //blue object IMU
             })
     xvizBuilder
-    .primitive(Arrow_STREAM)
+    .primitive(ARROW_STREAM)
     .polyline(line2)
     .style(
          {
@@ -147,7 +148,7 @@ function build_CubeBox(marker, xvizBuilder, i) {
 
     //build_Arrow(marker,xvizBuilder);
 
-    xvizBuilder.primitive('tracklets_text')
+    xvizBuilder.primitive(TEXT_STREAM)
         .position(TF_Vector.label_position)
         .text(object_id)
 }
@@ -168,7 +169,7 @@ function build_Sphere(marker, xvizBuilder) {
             height: object_height
         })
         .id(object_id)
-    xvizBuilder.primitive('tracklets_text')
+    xvizBuilder.primitive(TEXT_STREAM)
         .position(label_position)
         .text(object_id);
     /*
@@ -178,7 +179,7 @@ function build_Sphere(marker, xvizBuilder) {
         .circle(marker.vertices, raduis)
         .classes(marker.object_class.toString())
     
-        xvizBuilder.primitive('tracklets_text')
+        xvizBuilder.primitive(TEXT_STREAM)
         .position(label_position)
         .text(object_id);*/
 }
@@ -274,5 +275,15 @@ module.exports = {
         if (build_option) {
             build_option(marker_obj, xvizBuilder, i)
         }
-    }
+    },
+    //velocityHeading's orientation preprocessing function
+    velocityHeading: function (velocity, origin_obj_yaw) {
+        var input_vx = velocity.linear.x;
+        var input_vy = velocity.linear.y;
+        velocity.linear.x = Math.sqrt(input_vx * input_vx + input_vy * input_vy);
+        velocity.linear.y = 0;
+        var velocity_yaw = Math.atan2(input_vy, input_vx);
+        var return_yaw = velocity_yaw + origin_obj_yaw
+        return return_yaw
+     }
 };

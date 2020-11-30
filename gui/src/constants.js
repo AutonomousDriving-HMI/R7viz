@@ -65,8 +65,8 @@ export const XVIZ_STYLE = {
   "/object/vehicles": [
     { name: "selected", style: { fill_color: "#ff8000aa" } }
   ],
-  '/tracklets/objects': [{name: 'selected', style: {fill_color: '#ff8000aa'}}],
-  '/lidar/points': [{style: {point_color_mode: 'ELEVATION', fill_color: "#47B27588"}}]
+  //'/tracklets/objects': [{name: 'selected', style: {fill_color: '#ff8000aa'}}],
+  '/sensor/lidar/pointcloud': [{style: {point_color_mode: 'ELEVATION', fill_color: "#47B27588"}}]
   //'/points_raw': [{style:  {point_color_mode: 'elevation',radiusPixels: 3, fill_color: "#00a", radiusPixels: 3}}]
 };
 

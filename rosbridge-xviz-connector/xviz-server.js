@@ -3,7 +3,7 @@ xviz styling
 https://github.com/uber/xviz/blob/master/docs/protocol-schema/style-specification.md#point
 */
 const WebSocket = require('ws');
-const ObjConveter= require('./xviz-object_converter')
+const ObjConveter= require('./XVIZ_Converter/xviz-object_converter')
 const process = require('process');
 const {XVIZMetadataBuilder, XVIZBuilder, XVIZUIBuilder, encodeBinaryXVIZ} = require("@xviz/builder");
 const { Z_BLOCK } = require('zlib');
@@ -15,12 +15,25 @@ const _ = require('lodash')
 const xvizMetaBuider = new XVIZMetadataBuilder();
 const xvizUIBuilder = new XVIZUIBuilder({});
 
-//jaekeun object info name space
+//object info name space
 const VECHILE_STREAM = '/objects/shape/vehicle'
-const PEDSTRIAN_STREAM = '/objects/shape/pedestrian'
-const Arrow_STREAM = '/objects/arrow'
 const UNKNOWN_STREAM = '/objects/shape/vehicle/unknown'
-const LINELIST_STREAM = 'marker/shape/linelist'
+const PEDSTRIAN_STREAM = '/objects/shape/pedestrian'
+const ARROW_STREAM = '/objects/direction/arrow'
+const LINELIST_STREAM = 'objects/shape/linelist'
+const LOCALPATH_STREAM = '/objects/localpath'
+
+//sensor info name space
+const POSE_STREAM = '/vehicle_pose'// '/vehicle/pose/gps-imu'
+const POINTCLOUD_STREAM = '/sensor/lidar/pointcloud'
+const CAMERAIMAGE_STREAM = '/sensor/camera/rawimage'
+
+//car status info name space
+const VELOCITY_STREAM = '/vehicle/status/velocity'
+const ACCELERATION_STREAM = '/vehicle/status/acceleration'
+const STEERING_STREAM = '/vehicle/status/steering_angle'
+
+const TEXT_STREAM = '/labal'
 
 //object class
 UNKNOWN = '0'
@@ -32,11 +45,11 @@ MOTORBIKE = '5'
 PEDESTRIAN = '6'
 ANIMAL = '7'
 
-xvizMetaBuider.stream('/vehicle_pose')
+xvizMetaBuider.stream(POSE_STREAM)
     .category("pose");
-xvizMetaBuider.stream('/camera/image_00').category("primitive").type("image");
+xvizMetaBuider.stream(CAMERAIMAGE_STREAM).category("primitive").type("image");
 //what we will use to make plot the desired path of the car 
-xvizMetaBuider.stream('/vehicle/trajectory')
+xvizMetaBuider.stream(LOCALPATH_STREAM)
 	.category('primitive')
     .type('polyline').streamStyle({
         stroke_color: '#47B27588',// a nice transparent green
@@ -97,7 +110,7 @@ xvizMetaBuider.stream(PEDSTRIAN_STREAM)
     });    /*
     .styleClass(category.streamName,OBJECT_PALATTE[category.streamName]) 
     /*.pose(this.FIXTURE_TRANSFORM_POSE*/
-xvizMetaBuider.stream('tracklets_text')
+xvizMetaBuider.stream(TEXT_STREAM)
     .category('primitive').type('text')
     .streamStyle({
         size: 30,
@@ -109,7 +122,7 @@ xvizMetaBuider.stream('tracklets_text')
         y: 0,
         z: 0
     });
-xvizMetaBuider.stream(Arrow_STREAM)
+xvizMetaBuider.stream(ARROW_STREAM)
     .category('primitive')
     .type('polyline')
     .coordinate('VEHICLE_RELATIVE')
@@ -132,8 +145,7 @@ xvizMetaBuider.stream(LINELIST_STREAM)
         z: 0
     }); 
 xvizMetaBuider
-    .stream('/lidar/points')
-    //.stream('/point-cloud')
+    .stream(POINTCLOUD_STREAM)
     .category('primitive')
     .type('point')
     .streamStyle({
@@ -149,33 +161,32 @@ xvizMetaBuider
         z: 0
     });
 xvizMetaBuider
-    .stream('/vehicle/velocity')
+    .stream(VELOCITY_STREAM)
     .category('time_series')
     .type('float')
     .unit('m/s')
 
-    .stream('/vehicle/wheel_angle')
+    .stream(STEERING_STREAM)
     .category('time_series')
     .type('float')
     .unit('degrees')
 
-    .stream('/vehicle/acceleration')
+    .stream(ACCELERATION_STREAM)
     .category('time_series')
     .type('float')
     .unit('m/s^2');
 
-xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:["/camera/image_00"]}) );
+xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:[CAMERAIMAGE_STREAM]}) );
 //xvizMetaBuider.ui(xvizUIBuilder);
 /************************metrics start************************************* */
-
 const panel = xvizUIBuilder.panel({name: 'Metrics'});
 const container = xvizUIBuilder.container({
     name: 'Metrics Panel',
     layout: 'vertical'
   });
-const metrics1 = xvizUIBuilder.metric({streams: ['/vehicle/velocity'], title: 'Velocity'});
-const metrics2 = xvizUIBuilder.metric({streams: ['/vehicle/acceleration'], title: 'Acceleration'});
-const metrics3 = xvizUIBuilder.metric({streams: ['/vehicle/wheel_angle'], title: 'Wheel_Angle'});
+const metrics1 = xvizUIBuilder.metric({streams: [VELOCITY_STREAM], title: 'Velocity'});
+const metrics2 = xvizUIBuilder.metric({streams: [ACCELERATION_STREAM], title: 'Acceleration'});
+const metrics3 = xvizUIBuilder.metric({streams: [STEERING_STREAM], title: 'Wheel_Angle'});
 
 container.child(metrics1);
 container.child(metrics2);
@@ -183,15 +194,12 @@ container.child(metrics3);
 xvizUIBuilder.child(panel).child(container);
 
 const ui = xvizUIBuilder.getUI();
-console.log(ui);
-
+//console.log(ui);
 //xvizMetaBuider.ui(xvizUIBuilder);
 /************************metrics end************************************* */
-
-
 xvizMetaBuider.ui(xvizUIBuilder);
 const _metadata = xvizMetaBuider.getMetadata();
-console.log(_metadata);
+//console.log(_metadata);
 //console.log("XVIZ server meta-data: ", JSON.stringify(_metadata));
 // it turns out we cannot use a constant global builder, as all the primitives keeps adding up
 const xvizBuilder = new XVIZBuilder({
@@ -199,23 +207,20 @@ const xvizBuilder = new XVIZBuilder({
 });
 //const _mockImage = require('fs').readFileSync("./mock.jpg").toString('base64');
 
-// Global cache for location and trajectory
+/* GlobalCache for GPS,IMU(location), LIDAR(lidarcache), CameraImage, ObjectDetection(obstaclesCatch)
+ it is deal with XVIZ frame and meata data */
 let _locationCache = null;
 let _trajectoryCache = null;
 let _ObstaclesCache = null;
-// cache and flag for camera image
 let _cameraImageCache = null;
-//let _newCameraImageFlag = false;333333
-// Global counter and cache for connections
+let _lidarCache = null;
+
+// Global server object and counter
 let _connectionCounter = 1;
 let _connectionMap = new Map();
-// Global server object
-let _wss = null;
-// glober timer object to control XVIZ frame rate
-let _frameTimer = null;
+let _wss = null;    
 
-//Gwang- make LidarCache
-let _lidarCache = null;
+let _frameTimer = null;         //global timer object to control XVIZ frame rate
 
 function connectionId() {
   const id = _connectionCounter;
@@ -225,7 +230,6 @@ function connectionId() {
 
 // add a new location message 
 function addLocationToCache(lat, lng, alt, roll, ptich, yaw,speed,steering, accel, time) {
-
     _locationCache = {
         latitude: lat,
         longitude: lng,
@@ -243,7 +247,6 @@ function addLocationToCache(lat, lng, alt, roll, ptich, yaw,speed,steering, acce
 //Gwang - make addLidarDataToCache
 //아마도 lidar는 points, colors를 가지고 XVIZ를 만드는것으로 파악이된다.
 function addLidarDataToCache(pt, col) {
-
     _lidarCache = {
         points: pt,
         colors: col,
@@ -271,65 +274,51 @@ function tryServeFrame(){
          * Use _locationCache.altitude' when using a map with height
           */
         let no_altitude = 0;
-        xvizBuilder.pose('/vehicle_pose')
+        xvizBuilder.pose(POSE_STREAM)
         .timestamp(_locationCache.timestamp)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .position(0,0,0)//.orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw)
             .orientation(0,0,_locationCache.yaw);
-
-  /*
-            //.mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
+            /*//.mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, no_altitude)
             .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw+1.57*2);
             */
-
-
-        xvizBuilder.timeSeries('/vehicle/velocity')
+        xvizBuilder.timeSeries(VELOCITY_STREAM)
         .timestamp(_locationCache.timestamp)
             .value(_locationCache.x_dir_velocity);
         
-        xvizBuilder.timeSeries('/vehicle/acceleration')
+        xvizBuilder.timeSeries(ACCELERATION_STREAM)
         .timestamp(_locationCache.timestamp)
             .value(_locationCache.x_dir_accelation);
 
-        xvizBuilder.timeSeries('/vehicle/wheel_angle')
+        xvizBuilder.timeSeries(STEERING_STREAM)
         .timestamp(_locationCache.timestamp)
             .value(_locationCache.degree_of_steering);
 
         if (_trajectoryCache) {
-            xvizBuilder.primitive('/vehicle/trajectory').polyline(_trajectoryCache);
+            xvizBuilder.primitive(LOCALPATH_STREAM).polyline(_trajectoryCache);
         } else {
             //xvizBuilder.primitive('/vehicle/trajectory').polyline([[2*Math.cos(_locationCache.heading), 2*Math.sin(_locationCache.heading), 0], [10*Math.cos(_locationCache.heading), 10*Math.sin(_locationCache.heading), 0]]);
         }
         if (_ObstaclesCache) {
             for (i=0;i<_ObstaclesCache.length;i++){
-                //console.log(_ObstaclesCache[i])
                 ObjConveter.ObjectType_Builder(_ObstaclesCache[i],xvizBuilder,i)
-                /*xvizBuilder.primitive('tracklets_text').position([_ObstaclesCache[i][0],_ObstaclesCache[i][1],3])
-                .text(object_id);*/
             }
         }
-        //jaeketun revise camera xvizbuilder
         if (_cameraImageCache) {
-            //console.log("image data", nodeBufferToTypedArray(_cameraImageCache.image_data))
             xvizBuilder.primitive('/camera/image_00').
                 image(nodeBufferToTypedArray(_cameraImageCache.image_data), 'png')
                 .dimensions(_cameraImageCache.width,_cameraImageCache.height)
                 .position([1, 1, 1]);
-            //_newCameraImageFlag = false;
-            //console.log("serving image ", _cameraImageCache.length);
         }
-
         //Gwang - add lidar XvizBuilder
         if (_lidarCache) {
             xvizBuilder
-                .primitive('/lidar/points')
-                //.primitive('/point-cloud')
+                .primitive(POINTCLOUD_STREAM)
                 .points(_lidarCache.points)
                 //.colors(_lidarCache.colors)
                 //.ids(_lidarCache.ids)
                 .style({fill_color : '#00ff00aa'});
-                //.colors(fill_color : '#00ff00aa')
                 //.colors(_lidarCache.colors)
         }
         //console.log(xvizBuilder.getMessage());
@@ -345,30 +334,7 @@ function tryServeFrame(){
     }
     return;
 }
-//define object's status
-function object_type_info(type,i){
-    //object = person
-    if (type ==0){
-        object_width = 1.4;
-        object_depth = 1.2;
-        object_id = [NAMESPACE_PEDSTRIAN,i].join('/')
-        object_height = 2.5;
-    //object = vechile
-    }else if (type ==1){
-        object_width = 1.8;
-        object_depth = 3.6;
-        object_id = [NAMESPACE_VECHILE,i].join('/')
-        object_height = 2;
-    //object =obstacle
-    }else if (type ==2){
-        object_width = 2;
-        object_depth = 2;
-        object_height = 2;
-        object_id = [NAMESPACE_OBSTACLE,i].join('/')
-    }
-}
-
-//using camrea xviz builder (base64 -> uint8Array (camera input type))
+//using camrea xviz builder (base64 -> uint8Array(camera input type))
 function nodeBufferToTypedArray(buffer){
     const typedArray = new Uint8Array(buffer);
     return typedArray;
@@ -443,7 +409,6 @@ class ConnectionContext {
     }
 }
 
-
 module.exports = {
     startListenOn: function (portNum) {
         console.log(`xviz server starting on ws://localhost:${portNum}`);
@@ -451,7 +416,6 @@ module.exports = {
             console.log("startListenOn can only be called one time")
             process.exit(-1);
         }
-
         _wss = new WebSocket.Server({port: portNum});
         // Setups initial connection state
         _wss.on('connection', ws => {
@@ -478,15 +442,12 @@ module.exports = {
         //tryServeFrame();
 
     },
-
     updateCarPath: function(positions) {
         _trajectoryCache = positions;
     },
-
     updateObstacles: function(obj_list) {
         _ObstaclesCache = obj_list;
     },
-
     updateCameraImage: function(image_data,width,height) {
         //console.log("new image ", image_data.length);
         // Initialize a new ImageData object
