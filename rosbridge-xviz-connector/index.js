@@ -290,7 +290,7 @@ function _mapPoints(points,pose){
       .toArray()
   });
 }
-/
+/*
 //makerarray-object detection data
 listener9.subscribe(function (message) {
   marker_obstacles=[]
@@ -329,12 +329,12 @@ listener9.subscribe(function (message) {
       //lat: lat_,
       //lng: lng_
     }
-    /*
+    
     orientation = {
       roll: marker_heading_list[0],
       pitch: marker_heading_list[1],
       yaw: marker_heading_list[2]
-    }*/
+    }
     
     if (car_pos_utm){
       marker_obj ={
@@ -356,8 +356,19 @@ listener9.subscribe(function (message) {
   } else {
     xvizServer.updateObstacles(null);
   }
-});
+});*/
 
+
+function velocityHeading(velocity,origin_obj_yaw){
+
+  var input_vx = velocity.linear.x;
+  var input_vy = velocity.linear.y;
+  velocity.linear.x = Math.sqrt(input_vx * input_vx + input_vy * input_vy);
+  velocity.linear.y = 0;
+  var velocity_yaw = Math.atan2(input_vy, input_vx);
+  var return_yaw = velocity_yaw+origin_obj_yaw
+  return return_yaw
+}
 
 //autoware_perception 
 listener10.subscribe(function (message){
@@ -369,6 +380,7 @@ listener10.subscribe(function (message){
     let { id, shape, state, semantic} = message.objects[i];
     let { x, y, z } = state.pose_covariance.pose.position
     let orientation_ = state.pose_covariance.pose.orientation
+    let velocity = state.twist_covariance.twist
     var object_heading_list = QuaternionToRoll_Pitch_Yaw(orientation_)
     //var rotation = quaternionToEuler(orientation_)
     
@@ -376,11 +388,9 @@ listener10.subscribe(function (message){
     let lat_ = object_geomatrix.lat
     let lng_ = object_geomatrix.lng;
     //console.log("twist",shape.dimensions)
-
-    //console.log("car yaw ptich roll,",yaw,pitch,roll)
+    var callback_yaw = velocityHeading(velocity,object_heading_list[2])
     if (car_pos_utm){
-      let twist =[{x: 0, y: 0, z: 0},{x:0 , y:shape.dimensions.y, z:0}]
-    
+      var vector =[{x: 0, y: 0, z: 0},{x:0 , y:shape.dimensions.y, z:0}]
       var pose={
         x:x,
         y:y,
@@ -392,7 +402,7 @@ listener10.subscribe(function (message){
       var orientation = {
         roll: object_heading_list[0],
         pitch: object_heading_list[1],
-        yaw: object_heading_list[2],
+        yaw: callback_yaw,
         car_yaw: yaw,
         car_pitch : pitch,
         car_roll : roll
@@ -407,7 +417,7 @@ listener10.subscribe(function (message){
         object_class: semantic.type,
         object_build: shape.type,
         scale: shape.dimensions,
-        points : twist
+        points : vector
       }
       
       autoware_obstacles.push(autoware_obj);
@@ -420,143 +430,6 @@ listener10.subscribe(function (message){
     xvizServer.updateObstacles(null);
   }
 });
-
-function FootpointLatitude(y){
-  const sm_a = 6378137.0;
-  const sm_b = 6356752.314;
-  var y_, alpha_, beta_, gamma_, delta_, epsilon_, n;
-  var result;
-
-  //calculate n 
-  n = (sm_a - sm_b)/(sm_a + sm_b);
-  //console.log("n",n)
-  alpha_ = ((sm_a+sm_b)/2.0)*(1+ Math.pow(n,2.0)/4)+(Math.pow(n,4.0)/64);
-  //console.log("alpha",alpha_)
-  y_ = y/alpha_;
-  beta_  = (3.0 * n/2.0)+(-27.0 * Math.pow(n, 3.0)/32.0)+(269.0 * Math.pow(n, 5.0)/512.0);
-  gamma_ = (21.0 * Math.pow(n, 2.0)/16.0)+(-55.0 * Math.pow(n, 4.0)/32.0);
-  delta_ = (151.0 * Math.pow(n, 3.0)/96.0)+(-417.0 * Math.pow(n, 5.0)/128.0);
-  epsilon_ = (1097.0 * Math.pow(n, 4.0) / 512.0);
-  result = y_ + (beta_ * Math.sin(2.0 * y_))
-              +(gamma_ * Math.sin(4.0 * y_))
-              +(delta_ * Math.sin(6.0 * y_))
-              +(epsilon_ * Math.sin(8.0 * y_));
-  return result
-}
-
-function MapXYToLatLon(x, y ,lambda0){
-  
-  var latitude, longitude;
-  const sm_a = 6378137.0;
-  const sm_b = 6356752.314;
-  var phif, Nf, Nfpow, nuf2, ep2, tf, tf2, tf4, cf;
-  var x1frac, x2frac, x3frac, x4frac, x5frac, x6frac, x7frac, x8frac;
-  var x2poly, x3poly, x4poly, x5poly, x6poly, x7poly, x8poly;
-  
-  // Get the value of phif, the footpoint latitude.
-  phif = FootpointLatitude(y);
-  console.log("phif",phif)
-  ep2 = (Math.pow(sm_a, 2.0) - Math.pow(sm_b, 2.0))/Math.pow(sm_b, 2.0);
-  cf = Math.cos(phif);
-  nuf2 = ep2 * Math.pow(cf, 2.0);
-  Nf = Math.pow(sm_a, 2.0) / (sm_b * Math.sqrt(1 + nuf2));
-  Nfpow = Nf;
-
-  //calculate tf 
-  tf = Math.tan(phif);
-  tf2 = tf * tf;
-  tf4 = tf2 * tf2;
-
-  //calculate fractional coefficients for x**n in the equations
-  //below to simplify the expressions for latitude and longitude.
-  x1frac = 1.0 / (Nfpow * cf);
-  Nfpow = Nf* Nf;   // now equals Nf**2)
-  x2frac = tf / (2.0 * Nfpow);
-  Nfpow = Nf* Nf;   //now equals Nf**3) 
-  x3frac = 1.0 / (6.0 * Nfpow * cf);
-  Nfpow = Nf* Nf;   //now equals Nf**4) 
-  x4frac = tf / (24.0 * Nfpow);
-  Nfpow = Nf* Nf;   //now equals Nf**5)
-  x5frac = 1.0 / (120.0 * Nfpow * cf);
-  Nfpow = Nf* Nf;  // now equals Nf**6)
-  x6frac = tf / (720.0 * Nfpow);
-  Nfpow = Nf* Nf;  //now equals Nf**7)
-  x7frac = 1.0 / (5040.0 * Nfpow * cf);
-  Nfpow = Nf* Nf;  // now equals Nf**8) 
-  x8frac = tf / (40320.0 * Nfpow);
-
-  //calculate polynomial coefficients for x**n.
-  // x**1 does not have a polynomial coefficient. 
-  x2poly = -1.0 - nuf2;
-  x3poly = -1.0 - 2 * tf2 - nuf2;
-  x4poly = 5.0 + 3.0 * tf2 + 6.0 * nuf2 - 6.0 * tf2 * nuf2
-    - 3.0 * (nuf2 * nuf2) - 9.0 * tf2 * (nuf2 * nuf2);
-  x5poly = 5.0 + 28.0 * tf2 + 24.0 * tf4 + 6.0 * nuf2 + 8.0 * tf2 * nuf2;
-  x6poly = -61.0 - 90.0 * tf2 - 45.0 * tf4 - 107.0 * nuf2
-    + 162.0 * tf2 * nuf2;
-  x7poly = -61.0 - 662.0 * tf2 - 1320.0 * tf4 - 720.0 * (tf4 * tf2);
-  x8poly = 1385.0 + 3633.0 * tf2 + 4095.0 * tf4 + 1575 * (tf4 * tf2); 
-  
-  //Calculate latitude 
-  latitude = phif + x2frac * x2poly * (x * x)
-    + x4frac * x4poly * Math.pow(x, 4.0)
-    + x6frac * x6poly * Math.pow(x, 6.0)
-    + x8frac * x8poly * Math.pow(x, 8.0);
-
-  //Calculate longitude 
-  longitude = lambda0 + x1frac * x
-    + x3frac * x3poly * Math.pow(x, 3.0)
-    + x5frac * x5poly * Math.pow(x, 5.0)
-    + x7frac * x7poly * Math.pow(x, 7.0);
-
-  return [latitude, longitude]
-}
-
-function UTMCentralMeridian(zone){
-  var cmeridian;
-
-  cmeridian = Degreetoradian(-183.0+ (zone*6.0));
-  return cmeridian
-}
-
-function UTMXYToLatLon(x, y ,southhemi, zone){
-  const UTMScaleFactor = 0.9996;
-  let latitude,longitude;
-  x = x- 500000.0;
-  x = x/UTMScaleFactor;
-  if (southhemi){
-    y = y- 10000000.0;
-  }
-  y =y/UTMScaleFactor;
-
-  var cmeridian = UTMCentralMeridian(zone);
-
-  gpsdata = MapXYToLatLon(x, y, cmeridian)
-  latitude = radToDegree(gpsdata[0])
-  longitude = radToDegree(gpsdata[1])
-  return [latitude,longitude]
-}
-
-/*
-listener5.subscribe(function (message) {
-    obstacles = [];
-    for (i=0;i<message.markers.length;i++){
-        let markerPos = message.markers[i].pose.position;
-        if (markerPos.x>0 && markerPos.y >0) {
-            obstacles.push([
-                markerPos.x - car_pos_utm.x,
-                markerPos.y - car_pos_utm.y,
-                markerPos.z
-            ]);
-        }
-    }
-    if (obstacles.length>0){
-        xvizServer.updateObstacles(obstacles);
-    } else {
-        xvizServer.updateObstacles(null);
-    }
-});
-*/
 
 let maxHeight = null;
 let maxWidth = null;
