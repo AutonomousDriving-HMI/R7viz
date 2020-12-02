@@ -208,7 +208,7 @@ listener4.subscribe(function (message) {
 listener5.subscribe(function (message){
   x_dir_acl = message.data;
 });
-
+/*
 //lidar sensor에 대한 xviz converter를 정의하는 function
 listener6.subscribe(function (message){
   pointcloud = message.is_dense;
@@ -218,7 +218,7 @@ listener6.subscribe(function (message){
   const colors = (load_lidar_data_return[1]);
   //var pointSize = load_lidar_data_return[1];
   xvizServer.updateLidar(positions, colors);
-});
+});*/
 //TwistStamped
 listener7.subscribe(function (message){
   x_dir_velocity = message.twist.linear.x * 3.6; // m/s -> km/h
@@ -309,9 +309,9 @@ listener10.subscribe(function (message){
     let object_geomatrix = utmobj.convertUtmToLatLng(x - car_pos_utm.x+450850,y - car_pos_utm.y+3951350,52,'S');
     let lat_ = object_geomatrix.lat
     let lng_ = object_geomatrix.lng;
-    //console.log("twist",shape.dimensions)
-    var callback_yaw = ObjConveter.velocityHeading(velocity,object_heading_list[2])
+    
     if (car_pos_utm){
+      var velocity_obj = ObjConveter.velocityPreprocessing(velocity,object_heading_list[2])
       var vector =[{x: 0, y: 0, z: 0},{x:0 , y:shape.dimensions.y, z:0}]
       var pose={
         x:x,
@@ -324,7 +324,8 @@ listener10.subscribe(function (message){
       var orientation = {
         roll: object_heading_list[0],
         pitch: object_heading_list[1],
-        yaw: callback_yaw,
+        yaw: velocity_obj.callback_yaw,
+        yaw_: object_heading_list[2],
         car_yaw: yaw,
         car_pitch : pitch,
         car_roll : roll
@@ -332,14 +333,15 @@ listener10.subscribe(function (message){
 
       var autoware_obj = {
         id: id,
-        vertices:new Vector3([x - car_pos_utm.x, y - car_pos_utm.y, z]),
+        vertices: new Vector3([x - car_pos_utm.x, y - car_pos_utm.y, z]),
         car_utm: car_pos_utm,
         geomatrix: pose,
         orientation: orientation,
         object_class: semantic.type,
         object_build: shape.type,
         scale: shape.dimensions,
-        points : vector
+        points : vector,
+        velocity: velocity_obj
       }
       
       autoware_obstacles.push(autoware_obj);

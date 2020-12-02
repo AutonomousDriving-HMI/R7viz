@@ -47,17 +47,24 @@ function define_RelativeTransform(marker) {
         yaw: Number(marker.orientation.car_yaw + marker.orientation.yaw),
         pitch: Number(0)
     }
+    arrowtransformpose = {
+        x: Number(0),
+        y: Number(0),
+        z: Number(0),
+        roll: Number(0),
+        //yaw : Number(2*1.57+marker.orientation.yaw-marker.orientation.car_yaw),
+        yaw: Number(marker.orientation.car_yaw + marker.orientation.yaw+1.57),
+        pitch: Number(0)
+    }
 }
 
 function TranformVertices(marker) {
-    define_RelativeTransform(marker)
     const object_depth = marker.scale.x / 2;  //is change
     const object_width = marker.scale.y / 2;
+
     var tran_points = [[marker.vertices.x, marker.vertices.y, marker.vertices.z]]
     transform_coord = object_transform_helper.getRelativeCoordinates(tran_points, basepose);
-
-    const label_position = [transform_coord[0].x, transform_coord[0].y, object_height]
-    
+    label_position = [transform_coord[0].x, transform_coord[0].y, object_height]
     /*
     this transformation is based on this metrix
     vertices = [[x + width, y - depth, 0],
@@ -84,49 +91,40 @@ function TranformVertices(marker) {
                           [transform_coord[0].x + Trans4[0].x, transform_coord[0].y + Trans4[0].y, 0]]
 
     return { label_position, transform_vertices }
-        xvizBuilder
-    .primitive(ARROW_STREAM)
-    .polyline(tarnsline)
-    .style(
-        {stroke_color:'#FEC56480'       //orange transform coordinate
-        })
-    
-    xvizBuilder
-    .primitive(ARROW_STREAM)
-    .polyline(tarnsline2)
-    .style(
-            {
-                stroke_color: '#7DDDD7'     //blue object IMU
-            })
-    xvizBuilder
-    .primitive(ARROW_STREAM)
-    .polyline(line2)
-    .style(
-         {
-          stroke_color: '#D6A00080'         //salgo object vertices
-            })
+}
+function velocitylimit(velocity_x,velocity_y,scale,velocity) {
+    var endofVec;
+    limitscale = 20;
+    //filering
+    if(velocity>limitscale){
+        scale = limitscale/velocity;
+    }
+    endofVec = new math.Vector3([velocity_x*scale,velocity_y*scale,0])
+    return endofVec;
 }
 
-function TransformVec(marker) {
-    define_RelativeTransform(marker)
-    vecTransformFlag = true
-    var tran_points = [[marker.vertices.x, marker.vertices.y, marker.vertices.z]]
-    transform_coord = object_transform_helper.getRelativeCoordinates(tran_points, basepose);
 
-    var transform_start = [transform_coord[0].x, transform_coord[0].y, 0]
+function TransformVec(arrow_obj, xvizBuilder) {  
+    let { origin_points, origin_endofVec, origin_pcross, origin_leftPtr, origin_rightPtr } = arrow_obj
+    transform_coord = object_transform_helper.getRelativeCoordinates([origin_points], basepose);
 
-    var tran_vec = [[marker.points[1].x, marker.points[1].y, marker.points[1].z]]
+    var transform_endofVec = object_transform_helper.getRelativeCoordinates([origin_endofVec], basepose);
+    var transform_endofVec = object_transform_helper.getRelativeCoordinates(transform_endofVec, arrowtransformpose);
+    const tf_endofVec = new math.Vector3([transform_coord[0].x + transform_endofVec[0].x, transform_coord[0].y + transform_endofVec[0].y, transform_coord[0].z])
 
-    var transform_twist = object_transform_helper.getRelativeCoordinates(tran_vec, basepose);
-    var transform_twist2 = object_transform_helper.getRelativeCoordinates(transform_twist, transformpose);
+    var transform_pcross = object_transform_helper.getRelativeCoordinates([origin_pcross], basepose);
+    transform_pcross = object_transform_helper.getRelativeCoordinates(transform_pcross, arrowtransformpose);
+    const tf_pcross = new math.Vector3([transform_coord[0].x + transform_pcross[0].x, transform_coord[0].y + transform_pcross[0].y, transform_coord[0].z])
 
-    var DIR_PTR = new math.Vector3([transform_coord[0].x + transform_twist2[0].x, transform_coord[0].y + transform_twist2[0].y, 0])
+    var transform_leftPtr = object_transform_helper.getRelativeCoordinates([origin_leftPtr], basepose);
+    transform_leftPtr = object_transform_helper.getRelativeCoordinates(transform_leftPtr, arrowtransformpose);
+    const tf_leftPtr = new math.Vector3([transform_coord[0].x + transform_leftPtr[0].x, transform_coord[0].y + transform_leftPtr[0].y, transform_coord[0].z])
 
+    var transform_rightPtr = object_transform_helper.getRelativeCoordinates([origin_rightPtr], basepose);
+    transform_rightPtr = object_transform_helper.getRelativeCoordinates(transform_rightPtr, arrowtransformpose);
+    const tf_rightPtr = new math.Vector3([transform_coord[0].x + transform_rightPtr[0].x, transform_coord[0].y + transform_rightPtr[0].y, transform_coord[0].z])
 
-    var DirectVector = [transform_start]
-    DirectVector.push(DIR_PTR)
-
-    return DirectVector
+    return [transform_coord[0],tf_pcross,tf_leftPtr,tf_endofVec,tf_rightPtr,tf_pcross]
 }
 
 function build_CubeBox(marker, xvizBuilder, i) {
@@ -146,7 +144,7 @@ function build_CubeBox(marker, xvizBuilder, i) {
         .classes(marker.object_class.toString())
         .id(object_id)
 
-    //build_Arrow(marker,xvizBuilder);
+    build_Arrow(marker,xvizBuilder);
 
     xvizBuilder.primitive(TEXT_STREAM)
         .position(TF_Vector.label_position)
@@ -185,53 +183,81 @@ function build_Sphere(marker, xvizBuilder) {
 }
 //
 function build_Arrow(marker, xvizBuilder) {
-    var { x, y, z } = marker.vertices
-    var { lat, lng } = marker.geomatrix;
-    object_geometrix = {
-        pose: new math.Vector3([x, y, z]),
-        geometrix: new math.Vector3([lat, lng, z]),
-        yaw: marker.orientation.yaw
-    }
-    const points = _makeArrow(marker);
-   
+    //const points = _makeArrow(marker,xvizBuilder);
+    const points = _makeArrow(marker,xvizBuilder);
     xvizBuilder
-        .primitive(Arrow_STREAM)
+        .primitive(ARROW_STREAM)
         .polyline(points)
         .style(
             {
-                stroke_color: '#267E6380'
+                stroke_color: '#FEC56480', //orange
+                stroke_width: 0.1
             })
 }
-//
-function _makeArrow(marker) {
-    const DirectVector = TransformVec(marker)
-    const arrowVecA = DirectVector[1]
 
-    const pCrossVec = arrowVecA.clone().scale(0.3);
-    const pCross = _makePoint(arrowVecA, pCrossVec.toArray());
+function _makeArrow(marker,xvizBuilder) {
+    const arrow_maker = {
+        scale: 3.6, ////m/s => km/h
+        transform_radian: Math.PI / 18, //degree :10
+        point_1: 0.9
+    }
+    const origin = new math.Vector3([marker.vertices.x, marker.vertices.y, marker.vertices.z])
+    const endofVec = velocitylimit(marker.velocity.dir_arrow[1].x, marker.velocity.dir_arrow[1].y, 3.6, marker.velocity.abs_velocity);
+    const pcross = endofVec.clone()
+    const leftPtr = endofVec.clone().scale(arrow_maker.point_1).rotateZ({ radians: -arrow_maker.transform_radian });
+    const rightPtr = endofVec.clone().scale(arrow_maker.point_1).rotateZ({ radians: arrow_maker.transform_radian });
 
-    arrowVecA.scale(0.5)
-    const arrowVecB = arrowVecA.clone();
+    const orignArrow = {
+        origin_points: origin,
+        origin_endofVec: endofVec,
+        origin_pcross: pcross,
+        origin_leftPtr: leftPtr,
+        origin_rightPtr: rightPtr
+    }
 
-    const leftPt = _makePoint(DirectVector[1], arrowVecB.rotateZ({ radians: -Math.PI / 4 }).toArray());
-    const rightPt = _makePoint(DirectVector[1], arrowVecA.rotateZ({ radians: Math.PI / 4 }).toArray());;
-
-    DirectVector.push(DirectVector[1])
-
-    return [DirectVector[0], DirectVector[1]]//, leftPt , DirectVector[1], rightPt, pCross];
+    return TransformVec(orignArrow, xvizBuilder);
 }
-function _makePoint(base, vector) {
-    const v = [base[0] + vector[0], base[1] + vector[1], base[2] + vector[2]];
-    return v;
+
+function vectorAngle(vec1,vec2){
+    var deltaX = vec2.x - vec1.x 
+    var delayY = vec2.y - vec1.y
+
+    var degree = Math.atan(deltaX/delayY)
+
+    return degree
 }
-function _makeVector(p) {
-    const v = [p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]];
-    return v;
+
+function vecScale(vec1, vec2,scale){
+    //var degree = vectorAngle(vec1,vec2)
+    var distance = vec1.distance(vec2)
+    var degree = vec1.angle(vec2)
+    var lengthX = distance*Math.cos(degree)*scale
+    var lengthY = distance*Math.sin(degree)*scale
+    var output = new math.Vector3([vec1.x+lengthX,vec1.y+lengthY,0])
+    return output
 }
-function _makePoint(base, vector) {
-    const v = [base[0] + vector[0], base[1] + vector[1], base[2] + vector[2]];
-    return v;
+
+function  Trigonometric(vec1, vec2){
+    const length = vec1.distance(vec2);
+    var offsetX = length/2;
+    var offsetY = length/2*Math.sqrt(3)
+    const leftPtr = new math.Vector3([vec1.x+offsetX,vec1.y+offsetY,0])
+    const rightPtr = new math.Vector3([vec1.x-offsetX,vec1.y-offsetY,0])
+    return [leftPtr,rightPtr]
 }
+
+function _mapPoints(points, pose) {
+    const origin = new Vector3([pose.x, pose.y, 0]);
+
+    return points.map(p => {
+      p = [p.x, p.y, 0];
+      return origin
+        .clone()
+        .add(p)
+        .toArray();
+    });
+  }
+
 function build_LineList(marker, xvizBuilder) {
     //console.log("before",marker.points)
     const lines = _.chunk(marker.points, 2);
@@ -256,12 +282,14 @@ function build_LineList(marker, xvizBuilder) {
     }*/
 }
 
+
 module.exports = {
     ObjectType_Builder: function (marker_obj_, xvizBuilder, i) {
         var marker_obj = {}
         Object.keys(marker_obj_).forEach(function (key) {
             marker_obj[key] = marker_obj_[key]
         })
+        define_RelativeTransform(marker_obj)
         const WRITERS = {
             '0': build_CubeBox.bind(this),
             '1': build_Sphere.bind(this),
@@ -277,13 +305,17 @@ module.exports = {
         }
     },
     //velocityHeading's orientation preprocessing function
-    velocityHeading: function (velocity, origin_obj_yaw) {
+    velocityPreprocessing: function (velocity, origin_obj_yaw) {
         var input_vx = velocity.linear.x;
         var input_vy = velocity.linear.y;
         velocity.linear.x = Math.sqrt(input_vx * input_vx + input_vy * input_vy);
         velocity.linear.y = 0;
+
+        var abs_velocity = velocity.linear.x *3.6 //unit:[km]
+        var dir_arrow = [{x: 0, y: 0, z: 0},{x:input_vx , y:input_vy, z:0}]
+
         var velocity_yaw = Math.atan2(input_vy, input_vx);
-        var return_yaw = velocity_yaw + origin_obj_yaw
-        return return_yaw
+        var callback_yaw = velocity_yaw + origin_obj_yaw
+        return {callback_yaw, abs_velocity, dir_arrow}
      }
 };
