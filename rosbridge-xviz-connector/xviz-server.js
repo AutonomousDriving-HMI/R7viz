@@ -9,7 +9,7 @@ const {XVIZMetadataBuilder, XVIZBuilder, XVIZUIBuilder, encodeBinaryXVIZ} = requ
 const { Z_BLOCK } = require('zlib');
 const {Vector3,_Pose} = require('math.gl')
 const math = require('math.gl')
-const _ = require('lodash')
+
 
 //import {OBJECT_PALATTE} from '../gui/src/src/custom_styles.js';
 const xvizMetaBuider = new XVIZMetadataBuilder();
@@ -276,7 +276,7 @@ function tryServeFrame(){
         let no_altitude = 0;
         xvizBuilder.pose(POSE_STREAM)
         .timestamp(_locationCache.timestamp)
-            .mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
+            .mapOrigin(_locationCache.longitude, _locationCache.latitude, 0)//_locationCache.altitude)
             .position(0,0,0)//.orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw)
             .orientation(0,0,_locationCache.yaw);
             /*//.mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)

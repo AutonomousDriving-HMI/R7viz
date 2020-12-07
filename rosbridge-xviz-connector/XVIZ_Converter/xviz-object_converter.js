@@ -1,6 +1,7 @@
 const {Vector3,_Pose} = require('math.gl')
 const math = require('math.gl')
 const object_transform_helper = require('./xviz-object_coordinate_transform')
+const _ = require('lodash')
 /*
 this is Uber XVIZ modules for object Transform
 you will search for directory ros-connecter node modules
@@ -61,16 +62,16 @@ function define_RelativeTransform(marker) {
 function TranformVertices(marker) {
     const object_depth = marker.scale.x / 2;  //is change
     const object_width = marker.scale.y / 2;
-
+    var {x,y,z} = marker.vertices
     var tran_points = [[marker.vertices.x, marker.vertices.y, marker.vertices.z]]
     transform_coord = object_transform_helper.getRelativeCoordinates(tran_points, basepose);
     label_position = [transform_coord[0].x, transform_coord[0].y, object_height]
-    /*
-    this transformation is based on this metrix
-    vertices = [[x + width, y - depth, 0],
-                [x + width, y + depth, 0],
-                [x - width, y + depth, 0],
-                [x - width, y - depth, 0]]*/
+    
+    //this transformation is based on this metrix
+    vertices = [[x + object_depth, y - object_width, 0],
+                [x + object_depth, y + object_width, 0],
+                [x - object_depth, y + object_width, 0],
+                [x - object_depth, y - object_width, 0]]
 
     var trans1 = object_transform_helper.getRelativeCoordinates([[object_width, -object_depth, 0]], basepose)
     var Trans1 = object_transform_helper.getRelativeCoordinates(trans1, transformpose)
@@ -90,7 +91,7 @@ function TranformVertices(marker) {
                           [transform_coord[0].x + Trans3[0].x, transform_coord[0].y + Trans3[0].y, 0],
                           [transform_coord[0].x + Trans4[0].x, transform_coord[0].y + Trans4[0].y, 0]]
 
-    return { label_position, transform_vertices }
+    return { label_position, transform_vertices }   //vertices}
 }
 function velocitylimit(velocity_x,velocity_y,scale,velocity) {
     var endofVec;
@@ -128,15 +129,16 @@ function TransformVec(arrow_obj, xvizBuilder) {
 }
 
 function build_CubeBox(marker, xvizBuilder, i) {
-    const object_depth = marker.scale.x / 2;  //is change
-    const object_width = marker.scale.y / 2;  //is change
+    const object_depth = marker.scale.x ;  //is change
+    const object_width = marker.scale.y ;  //is change
 
     var object_id = [VECHILE_STREAM, i].join('/');
     var object_height = marker.scale.z;
 
-    const TF_Vector = TranformVertices(marker, object_depth, object_width)
+    const TF_Vector = TranformVertices(marker, object_depth/2, object_width/2)
 
     xvizBuilder.primitive(VECHILE_STREAM)
+        //.polygon(TF_Vector.transform_vertices)
         .polygon(TF_Vector.transform_vertices)
         .style({
             height: object_height,
@@ -214,7 +216,6 @@ function _makeArrow(marker,xvizBuilder) {
         origin_leftPtr: leftPtr,
         origin_rightPtr: rightPtr
     }
-
     return TransformVec(orignArrow, xvizBuilder);
 }
 
@@ -247,10 +248,10 @@ function  Trigonometric(vec1, vec2){
 }
 
 function _mapPoints(points, pose) {
-    const origin = new Vector3([pose.x, pose.y, 0]);
+    const origin = new Vector3([pose.x, pose.y, pose.z]);
 
     return points.map(p => {
-      p = [p.x, p.y, 0];
+      p = [p.y, p.x, p.z];
       return origin
         .clone()
         .add(p)
@@ -259,11 +260,34 @@ function _mapPoints(points, pose) {
   }
 
 function build_LineList(marker, xvizBuilder) {
-    //console.log("before",marker.points)
+    //console.log(marker.points[0])
+    var {x,y,z} =marker.vertices
+    //console.log("before_z",marker.vertices.z)
+    //marker.vertices.z = marker.vertices.z+marker.points[0].z
+    marker.vertices.z = marker.points[0].z
     const lines = _.chunk(marker.points, 2);
-    //console.log("after",lines[0])
-    lines.forEach((line, index) => {
-        //console.log("after2",_mapPoints(line, marker.vertices))
+    console.log("start")
+    for (var i = 0; i<lines.length; i++){
+        line = lines[i]
+        console.log("output",_mapPoints(line, marker.vertices))
+        xvizBuilder.primitive(LINELIST_STREAM)
+        .polyline(_mapPoints(line, marker.vertices))
+        .style({
+            stroke_color: '#EEA2AD80',
+            stroke_width: 0.1
+        })
+        .classes("1")//marker.object_class.toString())
+    }
+    //console.log("after_z",marker.vertices.z)
+    //console.log("marker.vertices",marker.vertices)
+    //console.log("before",marker.points)
+    
+    //console.log("what is chunk",lines)
+    
+    
+    /*lines.forEach((line, index) => {
+        console.log("vertices",marker.vertices.z,"line",line)
+        console.log("output",_mapPoints(line, marker.vertices))
         xvizBuilder.primitive(LINELIST_STREAM)
             .polyline(_mapPoints(line, marker.vertices))
             .style({
@@ -271,7 +295,7 @@ function build_LineList(marker, xvizBuilder) {
                 stroke_width: 0.1
             })
             .classes("1")//marker.object_class.toString())
-    })
+    })*/
     /*for (let j =0; j< lines.length; j++){
         console.log(lines[j])
         var line = _mapPoints(lines[j],marker.vertices)
@@ -304,8 +328,16 @@ module.exports = {
             build_option(marker_obj, xvizBuilder, i)
         }
     },
+    velocityPostProcessing: function (velocity) {
+        var input_vx = velocity.x;
+        var input_vy = velocity.y;
+        velocity.x = Math.sqrt(input_vx * input_vx + input_vy * input_vy);
+        velocity.y = 0
+        return velocity
+    },
     //velocityHeading's orientation preprocessing function
     velocityPreprocessing: function (velocity, origin_obj_yaw) {
+        //velocity = velocityPostProcessing(velocity)
         var input_vx = velocity.linear.x;
         var input_vy = velocity.linear.y;
         velocity.linear.x = Math.sqrt(input_vx * input_vx + input_vy * input_vy);
@@ -315,6 +347,21 @@ module.exports = {
         var dir_arrow = [{x: 0, y: 0, z: 0},{x:input_vx , y:input_vy, z:0}]
 
         var velocity_yaw = Math.atan2(input_vy, input_vx);
+        var callback_yaw = velocity_yaw + origin_obj_yaw
+        return {callback_yaw, abs_velocity, dir_arrow}
+        
+     },
+     //is will change
+     velocityPreprocessing_marker: function (points, origin_obj_yaw) {
+        //console.log("points",points)
+        var input_vx = points[1].x;
+        var input_vy = points[1].y ;
+
+        var abs_velocity = Math.sqrt( input_vx* input_vx  + input_vy * input_vy );
+        abs_velocity = abs_velocity *3.6 //unit:[km]
+        var dir_arrow = points
+        
+        var velocity_yaw = Math.atan2(input_vx, input_vy);
         var callback_yaw = velocity_yaw + origin_obj_yaw
         return {callback_yaw, abs_velocity, dir_arrow}
      }
