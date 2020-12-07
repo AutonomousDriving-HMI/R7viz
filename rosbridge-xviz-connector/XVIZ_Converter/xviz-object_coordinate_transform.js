@@ -1,3 +1,7 @@
+
+
+
+
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
@@ -15,6 +19,7 @@ module.exports = {
         if (!(basePose instanceof _math._Pose)) {
             basePose = new _math._Pose(basePose);
         }
+        var transformMatrix = basePose.getTransformationMatrix();
         var transformMatrix = basePose.getTransformationMatrix();
         return vertices.map(function (p) {
             return transformMatrix.transformVector(p);
