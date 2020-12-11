@@ -30,7 +30,6 @@ import { setXVIZConfig } from '@xviz/parser';
 import {
   _XVIZMetric as XVIZMetric,
   XVIZLiveLoader,
-  LogViewer,
   VIEW_MODE,
   XVIZPanel,
   StreamSettingsPanel,
@@ -40,22 +39,15 @@ import {
   LogViewerStats,
   XVIZWorkerFarmStatus,
   XVIZWorkersMonitor,
-  XVIZWorkersStatus 
+  XVIZWorkersStatus
 } from 'streetscape.gl';
 import { ThemeProvider, Form, Button } from '@streetscape.gl/monochrome';
-
-//import ROSLIB from 'roslib';
 import { XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS, XVIZ_STYLE, CAR, STYLES } from './constants';
-
-/*custom import*/
-//import imgstyles from './image.css';
+import ControPanel from './control-Panel';
 import { UI_THEME } from './custom_styles'
 import MapView from './mapview';
+import HUD from './hud';
 import './stylesheets/main.scss';
-import SteeringInfo from './steering-info';
-//import {FpsView} from "react-fps";
-//import "./index.scss";
-
 setXVIZConfig(XVIZ_CONFIG);
 
 let params = (new URL(document.location)).searchParams;
@@ -72,9 +64,6 @@ if (!mapStyleRef) {
   mapStyleRef = 'mapbox://styles/gwangryul/ckgkh9m6v0om719o4p1n3lba9';
 }
 
-// get camera image directly from rosbridge instead of xviz
-// for better performance
-
 const exampleLog = new XVIZLiveLoader({
   logGuid: 'mock',
   bufferLength: 8,
@@ -85,49 +74,6 @@ const exampleLog = new XVIZLiveLoader({
   worker: true,
   maxConcurrency: 3
 });
-
-/**Wheel_Widget_Style, Meter_Widget_Style, Turn_Signal_Widget_Style
- * style에 대한 정의부분 
- * 나중에 다른파일로 만들자
- */
-const WHEEL_WIDGET_STYLE = {
-  arcRadius: 0,
-  msrValue: {
-    fontSize: 18,
-    fontWeight: 700,
-    paddingTop: 0
-  },
-  units: {
-    fontSize: 14
-  }
-};
-const METER_WIDGET_STYLE = {
-  arcRadius: 42,
-  msrValue: {
-    fontSize: 18,
-    fontWeight: 700,
-    paddingTop: 3
-  },
-  units: {
-    fontSize: 14
-  }
-};
-const TURN_SIGNAL_WIDGET_STYLE = {
-  wrapper: {
-    padding: 0
-  },
-  arrow: {
-    height: 16
-  }
-};
-const AUTONOMY_STATE = {
-  autonomous: '#47B275',
-  manual: '#5B91F4',
-  error: '#F25138',
-  unknown: '#E2E2E2'
-};
-/****************widget end***************** */
-
 
 class Example extends PureComponent {
   state = {
@@ -155,7 +101,6 @@ class Example extends PureComponent {
     /**토론토 대학에서 정의한 componentDidmount */
     //this.state.log.connect();
 
-    /***********************for debug start************************** */
     /**디버그를 위해서 다시 정의한 componentDidmount */
     const { log } = this.state;
     log
@@ -180,12 +125,7 @@ class Example extends PureComponent {
       }
     };
     this.xvizWorkerMonitor.start();
-
-    /***********************for debug end************************** */
-
   }
-
-  /***********************for debug start************************** */
   componentWillUnmount() {
     if (this.xvizWorkerMonitor) {
       this.xvizWorkerMonitor.stop();
@@ -193,7 +133,7 @@ class Example extends PureComponent {
   }
 
   _renderPerf = () => {
-    const {statsSnapshot, backlog, dropped, workers} = this.state;
+    const { statsSnapshot, backlog, dropped, workers } = this.state;
     return this.state.settings.showDebug ? (
       <div>
         <hr />
@@ -204,8 +144,6 @@ class Example extends PureComponent {
       </div>
     ) : null;
   };
-
-  /***********************for debug end************************** */
 
   _onSettingsChange = changedSettings => {
     this.setState({
@@ -236,109 +174,34 @@ class Example extends PureComponent {
     console.log(log);
     return (
       <div id="container">
-        {/*<FpsView width={240} height={180} bottom={60} right={80}/>*/}
         <div id="control-panel">
-          <div id="logo">
-            {/*a 태그(Tag)는 문서를 링크 시키기 위해 사용하는 태그(Tag)이다.*/}
-            {/*href : 연결할 주소를 지정 한다.
-                  target : 링크를 클릭 할 때 창을 어떻게 열지 설정 한다.
-                  title : 해당 링크에 마우스 커서를 올릴때 도움말 설명을 설정 한다.*/}
-            <a href="https://www.dgist.ac.kr/">
-              <img src="./assets/logo.jpg" alt="Digst Logo" />
-            </a>
-          </div>
-          <hr />
-          <XVIZPanel log={log} name="Camera" />
-          <hr />
-          <XVIZPanel
-            log={log}
-            name="Metrics"
-            //style={XVIZ_PANEL_STYLE}
-          />
-          <hr />
-          <SteeringInfo log={log} state={this.state}/>
-          <hr />
-          <Form
-            data={APP_SETTINGS}
-            values={this.state.settings}
-            onChange={this._onSettingsChange}
-          />
-          <hr />
-          <StreamSettingsPanel
-            log={log}
-            onSettingsChange={this._onStreamSettingChange}
-          />
-          {this._renderPerf()}
-          <hr />
-          <Form
-            data={CONFIG_SETTINGS}
-            values={this.state}
-            onChange={this._onConfigChange}
-          />
-          <hr />
-          <Button onClick={this._onButtonClick}>
-            Re-Connect
-          </Button>
+          {/*this._renderPerf()*/}
+          {
+            <ControPanel
+              log={log}
+              state={this.state}
+              settings={this.state.settings}
+              onSettingsChange={this._onStreamSettingChange}
+              onChange={this._onSettingsChange}
+              onClick={this._onButtonClick}
+            />
+          }
         </div>
         <div id="log-panel">
           <div id="map-view">
-          {<MapView
+            {<MapView
               log={log}
               settings={settings}
               onSettingsChange={this._onSettingsChange}
-              mapToken = {mapToken}
-              mapStyle = {mapStyle}
-              debug= {payload => this.setState({statsSnapshot: payload})}
-               />
+              mapToken={mapToken}
+              mapStyle={mapStyle}
+              debug={payload => this.setState({ statsSnapshot: payload })}
+            />
             }
-            {/*<LogViewer
-              log={log}
-              //mapboxApiAccessToken={mapToken}
-              //mapStyle={mapStyle}
-              car={CAR}
-              xvizStyles={XVIZ_STYLE}
-              customLayers={customLayers}
-              viewMode={VIEW_MODE[settings.viewMode]}
-            />*/}
-
             <div id="hud">
-              {/*
-                add TurnSignalWidget, TrafficLightWidget, MeterWidget
-                **주의 style={METER_WIDGET_STYLE}를 제거함 
-                */}
-              <TurnSignalWidget
+              {<HUD
                 log={log}
-                style={TURN_SIGNAL_WIDGET_STYLE}
-                streamName="/vehicle/turn_signal"
-              />
-              <hr />
-              <TrafficLightWidget
-                log={log}
-                style={TURN_SIGNAL_WIDGET_STYLE}
-                streamName="/vehicle/traffic_light"
-              />
-              <hr />
-            </div>
-            <div id="hud-meterwidget">
-              <hr />
-              <MeterWidget
-                log={log}
-                style={METER_WIDGET_STYLE}
-                streamName="/vehicle/acceleration"
-                units="Acceleration"
-                min={-4}
-                max={4}
-              />
-              <hr />
-              <MeterWidget
-                log={log}
-                style={METER_WIDGET_STYLE}
-                streamName="/vehicle/velocity"
-                units="Speed"
-                min={0}
-                max={20}
-              />
-              <hr />
+              />}
             </div>
           </div>
         </div>

@@ -15,7 +15,6 @@ const WHEEL_WIDGET_STYLE = {
     }
 };
 
-
 export default class SteeringInfo extends PureComponent {
 
     _renderSteeringWheel({streams}) {
@@ -34,7 +33,7 @@ export default class SteeringInfo extends PureComponent {
         return (
             <div style={{display: 'flex', flexDirection: 'row', justifyContent:'space-between', alignItems:'center', paddingBottom: '5px', paddingTop:'10px'}}>
                 <div style={{paddingLeft: '18px'}}>
-                    <BaseWidget log={this.props.log} streamNames={{state: '/vehicle/wheel_angle'}}>
+                    <BaseWidget log={this.props.log} streamNames={{state: '/vehicle/status/steering_angle'}}>
                         {this._renderSteeringWheel}
                     </BaseWidget>
                 </div>
@@ -42,18 +41,10 @@ export default class SteeringInfo extends PureComponent {
                     <MeterWidget
                         log={this.props.log}
                         style={WHEEL_WIDGET_STYLE}
-                        streamName="/vehicle/wheel_angle"
+                        streamName="/vehicle/status/steering_angle"
                         units="Steering Angle"
                         min={-180}
                         max={180}
-                    />
-                    <MeterWidget
-                        log={this.props.log}
-                        style={WHEEL_WIDGET_STYLE}
-                        streamName="/vehicle/turn_count"
-                        units="Turn Count"
-                        min={-3}
-                        max={3}
                     />
                 </div>
             </div>

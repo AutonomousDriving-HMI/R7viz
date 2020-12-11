@@ -60,11 +60,31 @@ export const APP_SETTINGS = {
     data: {TOP_DOWN: 'Top Down', PERSPECTIVE: 'Perspective', DRIVER: 'Driver'}
   }
 };
+export const METER_WIDGET_STYLE = {
+  arcRadius: 42,
+  msrValue: {
+    fontSize: 18,
+    fontWeight: 700,
+    paddingTop: 3
+  },
+  units: {
+    fontSize: 14
+  }
+};
+export const TURN_SIGNAL_WIDGET_STYLE = {
+  wrapper: {
+    padding: 0
+  },
+  arrow: {
+    height: 16
+  }
+};
 
 export const XVIZ_STYLE = {
   "/object/vehicles": [
     { name: "selected", style: { fill_color: "#ff8000aa" } }
   ],
+
   //'/tracklets/objects': [{name: 'selected', style: {fill_color: '#ff8000aa'}}],
   '/sensor/lidar/pointcloud': [{style: {point_color_mode: 'ELEVATION', fill_color: "#47B27588"}}]
   //'/points_raw': [{style:  {point_color_mode: 'elevation',radiusPixels: 3, fill_color: "#00a", radiusPixels: 3}}]
