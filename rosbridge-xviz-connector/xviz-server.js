@@ -10,6 +10,9 @@ const { Z_BLOCK } = require('zlib');
 const {Vector3,_Pose} = require('math.gl')
 const math = require('math.gl')
 
+var count = 0;
+const lidar_hz = 1;
+
 
 //import {OBJECT_PALATTE} from '../gui/src/src/custom_styles.js';
 const xvizMetaBuider = new XVIZMetadataBuilder();
@@ -156,9 +159,9 @@ xvizMetaBuider
     // http://www.cvlibs.net/datasets/kitti/setup.php
     .coordinate('VEHICLE_RELATIVE')
     .pose({
-        x: 0,
-        y: 0,
-        z: 0
+        x: 1.2,
+        y: -0.3,
+        z: 1.8
     });
 xvizMetaBuider
     .stream(VELOCITY_STREAM)
@@ -243,7 +246,6 @@ function addLocationToCache(lat, lng, alt, roll, ptich, yaw,speed,steering, acce
         timestamp: time,
     };
 }
-
 //Gwang - make addLidarDataToCache
 //아마도 lidar는 points, colors를 가지고 XVIZ를 만드는것으로 파악이된다.
 function addLidarDataToCache(pt, col) {
@@ -276,13 +278,11 @@ function tryServeFrame(){
         let no_altitude = 0;
         xvizBuilder.pose(POSE_STREAM)
         .timestamp(_locationCache.timestamp)
-            .mapOrigin(_locationCache.longitude, _locationCache.latitude, 0)//_locationCache.altitude)
-            .position(0,0,0)//.orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw)
-            .orientation(0,0,_locationCache.yaw);
-            /*//.mapOrigin(_locationCache.longitude, _locationCache.latitude, _locationCache.altitude)
-            .mapOrigin(_locationCache.longitude, _locationCache.latitude, no_altitude)
-            .position(0,0,0).orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw+1.57*2);
-            */
+            .mapOrigin(_locationCache.longitude, _locationCache.latitude, 0)
+            .position(0,0,0)
+            //.orientation(0,0,_locationCache.yaw);
+            .orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw + 3.141592);
+
         xvizBuilder.timeSeries(VELOCITY_STREAM)
         .timestamp(_locationCache.timestamp)
             .value(_locationCache.x_dir_velocity);
@@ -308,24 +308,28 @@ function tryServeFrame(){
         if (_cameraImageCache) {
             xvizBuilder.primitive('/camera/image_00').
                 image(nodeBufferToTypedArray(_cameraImageCache.image_data), 'png')
-                .dimensions(_cameraImageCache.width,_cameraImageCache.height)
+                .dimensions(_cameraImageCache.width, _cameraImageCache.height)
                 .position([1, 1, 1]);
         }
         //Gwang - add lidar XvizBuilder
-        if (_lidarCache) {
-            xvizBuilder
-                .primitive(POINTCLOUD_STREAM)
-                .points(_lidarCache.points)
+        if (count == lidar_hz) {
+            if (_lidarCache) {
+                xvizBuilder
+                    .primitive(POINTCLOUD_STREAM)
+                    .points(_lidarCache.points)
+                    //.colors(_lidarCache.colors)
+                    //.ids(_lidarCache.ids)
+                    .style({ fill_color: '#00ff00aa' });
                 //.colors(_lidarCache.colors)
-                //.ids(_lidarCache.ids)
-                .style({fill_color : '#00ff00aa'});
-                //.colors(_lidarCache.colors)
+            }
+            count = 0;
         }
         //console.log(xvizBuilder.getMessage());
-        const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(),{});
+        const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(), {});
         //console.log("frame time",_frameTimer)
         //const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
         //console.log(xvizFrame);
+        count = count + 1;
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
             //_locationCache = null;

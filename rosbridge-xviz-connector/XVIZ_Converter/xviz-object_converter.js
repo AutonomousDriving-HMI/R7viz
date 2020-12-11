@@ -34,28 +34,28 @@ function define_RelativeTransform(marker) {
         x: Number(0),
         y: Number(0),
         z: Number(0),
-        roll: Number(0),
+        roll: Number(-marker.orientation.car_roll),
         yaw: Number(-marker.orientation.car_yaw),
-        pitch: Number(0)
+        pitch: Number(-marker.orientation.car_pitch)
     }
     //transform relative obejct orientation
     transformpose = {
         x: Number(0),
         y: Number(0),
         z: Number(0),
-        roll: Number(0),
+        roll:  Number(marker.orientation.car_roll + marker.orientation.roll),
         //yaw : Number(2*1.57+marker.orientation.yaw-marker.orientation.car_yaw),
         yaw: Number(marker.orientation.car_yaw + marker.orientation.yaw),
-        pitch: Number(0)
+        pitch: Number(marker.orientation.car_pitch + marker.orientation.pitch)
     }
     arrowtransformpose = {
         x: Number(0),
         y: Number(0),
         z: Number(0),
-        roll: Number(0),
+        roll: Number(marker.orientation.car_roll + marker.orientation.roll+1.57),
         //yaw : Number(2*1.57+marker.orientation.yaw-marker.orientation.car_yaw),
         yaw: Number(marker.orientation.car_yaw + marker.orientation.yaw+1.57),
-        pitch: Number(0)
+        pitch: Number(marker.orientation.car_pitch + marker.orientation.pitch+1.57)
     }
 }
 

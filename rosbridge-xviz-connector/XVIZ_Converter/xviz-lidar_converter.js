@@ -67,7 +67,7 @@ module.exports = {
         let points_binary = [];
         let intensity_binary = [];
         //let colors = []; //colors 변경
-        const colors = new Uint8Array(3 * pointsCount).fill(255);
+        const colors = new Uint8Array(pointsCount).fill(255);
         let interval = 32;
       
         //var F32arr_lidarmsg = base64toFloat32array(lidar_msg.data);
@@ -109,9 +109,10 @@ module.exports = {
       
           //intensity는 구현해야야 함
           const reflectance = buf.readFloatLE(i * pointSize + 16);
-          colors[i * 3 + 0] = 80 + reflectance * 80;
-          colors[i * 3 + 1] = 80 + reflectance * 80;
-          colors[i * 3 + 2] = 80 + reflectance * 60;
+          intensity_binary.push(reflectance);
+          //colors[i * 3 + 0] = 80 + reflectance * 80;
+          //colors[i * 3 + 1] = 80 + reflectance * 80;
+          //colors[i * 3 + 2] = 80 + reflectance * 60;
       
       
           //const ring = parser.parse(buf.slice(i+20, i+24));
@@ -129,6 +130,6 @@ module.exports = {
             colors.push(255); // a
         }*/
       
-        return [points, colors];
+        return [points, intensity_float];
     }
 }

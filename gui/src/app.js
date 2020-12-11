@@ -69,7 +69,7 @@ if (!mapboxToken) {
   mapboxToken = "pk.eyJ1IjoiZ3dhbmdyeXVsIiwiYSI6ImNrZmRwcnMzMjFyeDQyeXFneXE3aHBid3kifQ.urnQG35_4DuT7D5lF5sBHA";
 }
 if (!mapStyleRef) {
-  mapStyleRef = 'mapbox://styles/gwangryul/ckgkh9m6v0om719o4p1n3lba9';
+  mapStyleRef = 'mapbox://styles/gwangryul/ckie4jqte3azb19nzg5coypmd';
 }
 
 // get camera image directly from rosbridge instead of xviz
@@ -324,7 +324,7 @@ class Example extends PureComponent {
               <MeterWidget
                 log={log}
                 style={METER_WIDGET_STYLE}
-                streamName="/vehicle/acceleration"
+                streamName="/vehicle/status/acceleration"
                 units="Acceleration"
                 min={-4}
                 max={4}
@@ -333,7 +333,7 @@ class Example extends PureComponent {
               <MeterWidget
                 log={log}
                 style={METER_WIDGET_STYLE}
-                streamName="/vehicle/velocity"
+                streamName="/vehicle/status/velocity"
                 units="Speed"
                 min={0}
                 max={20}
