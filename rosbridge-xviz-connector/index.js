@@ -1,7 +1,5 @@
 const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
-const Parser = require('binary-parser').Parser;
-const parser = new Parser().floatle();
 const toUint8Array = require('base64-to-uint8array')
 const utmConverter = require('utm-latlng');
 const {Vector3,_Euler} = require('math.gl')
@@ -167,7 +165,6 @@ listener.subscribe(function (message) {
         xvizServer.updateCarPath(null);
       }
     }
-    
     //Location_data = UTMXYToLatLon(x+450850,y+3951350,false,52);
     /*var gps_data = L.utm({x: message.pose.position.x, 
                           y: message.pose.position.y,
@@ -182,8 +179,8 @@ listener.subscribe(function (message) {
     //latitude = message.latitude
     //console.log('GPS data test')
     //console.log(message.latitude, message.longitude, message.altitude,parseFloat(timestamp));
-    //xvizServer.updateLocation(x, y, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
-    xvizServer.updateLocation(lat, lng, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
+    xvizServer.updateLocation(x, y, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
+    //xvizServer.updateLocation(lat, lng, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
 });
 
 listener2.subscribe(function(message) {
