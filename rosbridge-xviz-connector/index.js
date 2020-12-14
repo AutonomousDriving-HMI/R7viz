@@ -1,5 +1,7 @@
 const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
+const Parser = require('binary-parser').Parser;
+const parser = new Parser().floatle();
 const toUint8Array = require('base64-to-uint8array')
 const utmConverter = require('utm-latlng');
 const {Vector3,_Euler} = require('math.gl')
@@ -198,7 +200,7 @@ listener4.subscribe(function (message){
 listener5.subscribe(function (message){
   steering_degree = Calculator.radToDegree(message.steering_wheel_angle)
 });
-/*
+
 //lidar sensor에 대한 xviz converter를 정의하는 function
 listener6.subscribe(function (message){
   pointcloud = message.is_dense;
@@ -208,7 +210,7 @@ listener6.subscribe(function (message){
   const colors = (load_lidar_data_return[1]);
   //var pointSize = load_lidar_data_return[1];
   xvizServer.updateLidar(positions, colors);
-})*/
+})
 /*
 listener7.subscribe(function(message) {
   const data_ = toUint8Array(message.data)
