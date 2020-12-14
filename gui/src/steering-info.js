@@ -15,7 +15,6 @@ const WHEEL_WIDGET_STYLE = {
     }
 };
 
-
 export default class SteeringInfo extends PureComponent {
 
     _renderSteeringWheel({streams}) {

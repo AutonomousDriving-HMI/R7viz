@@ -1,7 +1,5 @@
 const ROSLIB = require("roslib");
 const xvizServer = require('./xviz-server');
-const Parser = require('binary-parser').Parser;
-const parser = new Parser().floatle();
 const toUint8Array = require('base64-to-uint8array')
 const utmConverter = require('utm-latlng');
 const {Vector3,_Euler} = require('math.gl')
