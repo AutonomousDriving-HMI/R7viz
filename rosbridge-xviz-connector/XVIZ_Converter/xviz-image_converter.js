@@ -48,9 +48,15 @@ module.exports = {
         })
             //.raw()
             .png()
-            .resize(resizeWidth, resizeHeight)
+            .rotate()
+            .resize({width: 640, 
+                     height: 360, 
+                     position:"left top"})
             .toFormat('png')
             .toBuffer();
         xvizServer.updateCameraImage(image, resizeWidth, resizeHeight);
+    },
+    compressedimage: function (message){
+      format
     }
 }

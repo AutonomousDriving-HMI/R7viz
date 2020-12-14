@@ -81,7 +81,7 @@ module.exports = {
           //for (let i = 0; i < lidar_msg.data.length; i += lidar_msg.point_step) {
       
         //readFloatLE용 for문
-          for (let i = 0; i < pointsCount; i++) {
+          for (let i = 0; i < pointsCount; i= i+2) {
       
           //const x = parser.parse(buf.slice(i, i + 4));
           //const y = parser.parse(buf.slice(i + 4, i + 8));
