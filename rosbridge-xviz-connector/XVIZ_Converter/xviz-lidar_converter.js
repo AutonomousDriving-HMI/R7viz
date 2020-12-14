@@ -7,11 +7,11 @@ module.exports = {
         const pointSize = lidar_msg.point_step;
         const pointsCount = lidar_msg.row_step / pointSize;
 
+
         let points_binary = [];
         let intensity_binary = [];
 
         const colors = new Uint8Array(3 * pointsCount).fill(255);
-        let interval = 32;
 
       
         const Uint8arr = toUint8Array(lidar_msg.data) //uint8 buffer
@@ -28,14 +28,15 @@ module.exports = {
           points_binary.push(zLE);
       
           const reflectance = buf.readFloatLE(i * pointSize + 16);
-          colors[i * 3 + 0] = 80 + reflectance * 80;
-          colors[i * 3 + 1] = 80 + reflectance * 80;
-          colors[i * 3 + 2] = 80 + reflectance * 60;
+          intensity_binary.push(reflectance);
+          //colors[i * 3 + 0] = 80 + reflectance * 80;
+          //colors[i * 3 + 1] = 80 + reflectance * 80;
+          //colors[i * 3 + 2] = 80 + reflectance * 60;
       
         }
         const points = new Float32Array(points_binary);
         const intensity_float = new Float32Array(intensity_binary);
       
-        return [points, colors];
+        return [points, intensity_float];
     }
 }

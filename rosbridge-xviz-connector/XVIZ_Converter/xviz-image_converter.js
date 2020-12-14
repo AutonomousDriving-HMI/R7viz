@@ -1,8 +1,32 @@
 const xvizServer = require('../xviz-server');
-
+const sharp = require('sharp');
 var maxHeight = null;
 var maxWidth = null;
-
+function getResizeDimension(width__, height__) {
+  const ratio = width__ / height__;
+  let resizeWidth = null;
+  let resizeHeight = null;
+  if (maxHeight > 0 && maxWidth > 0) {
+    resizeWidth = Math.min(maxWidth, maxHeight * ratio);
+    resizeHeight = Math.min(maxHeight, maxWidth / ratio);
+  }
+  else if (maxHeight > 0) {
+    resizeWidth = maxHeight * ratio;
+    resizeHeight = maxHeight;
+  }
+  else if (maxWidth > 0) {
+    resizeWidth = maxWidth;
+    resizeHeight = maxWidth / ratio;
+  }
+  else {
+    resizeWidth = width__;
+    resizeHeight = height__;
+  }
+  return {
+    resizeWidth: Math.floor(resizeWidth),
+    resizeHeight: Math.floor(resizeHeight)
+  }
+}
 module.exports = {
     //using camrea xviz builder (base64 -> uint8Array(camera input type))
     nodeBufferToTypedArray: function (buffer) {
@@ -24,35 +48,15 @@ module.exports = {
         })
             //.raw()
             .png()
-            .resize(resizeWidth, resizeHeight)
+            .rotate()
+            .resize({width: 640, 
+                     height: 360, 
+                     position:"left top"})
             .toFormat('png')
             .toBuffer();
         xvizServer.updateCameraImage(image, resizeWidth, resizeHeight);
     },
-     getResizeDimension: function(width__, height__){
-        const ratio = width__/height__;
-        let resizeWidth = null;
-        let resizeHeight = null;
-      
-        if (maxHeight > 0 && maxWidth > 0) {
-          resizeWidth = Math.min(maxWidth, maxHeight * ratio);
-          resizeHeight = Math.min(maxHeight, maxWidth / ratio);
-        }
-        else if (maxHeight > 0) {
-          resizeWidth = maxHeight * ratio;
-          resizeHeight = maxHeight;
-        }
-        else if (maxWidth > 0) {
-          resizeWidth = maxWidth;
-          resizeHeight = maxWidth / ratio;
-        }
-        else {
-          resizeWidth = width__;
-          resizeHeight = height__;
-        }
-        return {
-          resizeWidth: Math.floor(resizeWidth),
-          resizeHeight: Math.floor(resizeHeight)
-        };
-      }
+    compressedimage: function (message){
+      format
+    }
 }

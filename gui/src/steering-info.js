@@ -20,7 +20,7 @@ export default class SteeringInfo extends PureComponent {
     _renderSteeringWheel({streams}) {
         var angle = (streams.state.data && streams.state.data.variable) || 'unknown';
         var rot = {
-          transform: `rotate(${angle}deg)`
+          transform: `rotate(${-angle}deg)`
         };
         return (
           <div style={rot}>
