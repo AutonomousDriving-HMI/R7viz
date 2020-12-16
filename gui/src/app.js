@@ -55,7 +55,7 @@ let server = params.get('server');
 let mapboxToken = params.get('maptoken');
 let mapStyleRef = params.get('mapstyle');
 if (!server) {
-  server = "localhost";
+  server = "172.17.0.2";
 }
 if (!mapboxToken) {
   mapboxToken = "pk.eyJ1IjoiZ3dhbmdyeXVsIiwiYSI6ImNrZmRwcnMzMjFyeDQyeXFneXE3aHBid3kifQ.urnQG35_4DuT7D5lF5sBHA";

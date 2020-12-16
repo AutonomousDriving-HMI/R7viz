@@ -76,9 +76,9 @@ function velocitylimit(velocity_x,velocity_y,scale,velocity) {
 }
 
 function build_CubeBox(marker, xvizBuilder, i) {
-    var text = class_labeling(marker.obj_class.toString())
-    var object_id = [VECHILE_STREAM, text ,i].join('/');
-    console.log(object_id)
+    //var text = class_labeling(marker.object_class.toString())
+    var object_id = [VECHILE_STREAM,i].join('/');
+    //console.log(object_id)
     var object_height = marker.scale.z;
     const BoundingBox = TranformVertices(marker)
 
@@ -99,8 +99,8 @@ function build_CubeBox(marker, xvizBuilder, i) {
 }
 
 function build_Cylinder(marker, xvizBuilder,i) {
-    var text = class_labeling(marker.obj_class.toString())
-    var object_id = [PEDESTRIAN_STREAM, text, i].join('/');
+    //var text = class_labeling(marker.object_class.toString())
+    var object_id = [PEDESTRIAN_STREAM,i].join('/');
     var object_height = marker.scale.z;
     const Cylinder = CylinderVertices(marker)
 
