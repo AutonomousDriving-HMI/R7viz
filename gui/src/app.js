@@ -177,7 +177,7 @@ class Example extends PureComponent {
     return (
       <div id="container">
         <div id="control-panel">
-          {/*this._renderPerf()*/}
+          {this._renderPerf() /*FPS moudle*/ }    
           {
             <ControPanel
               log={log}

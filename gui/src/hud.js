@@ -30,7 +30,7 @@ export default class HUD extends React.PureComponent {
                 <MeterWidget
                     log={log}
                     style={METER_WIDGET_STYLE}
-                    streamName="'/vehicle/status/acceleration"
+                    streamName="/vehicle/status/acceleration"
                     units="Acceleration"
                     min={-4}
                     max={4}
