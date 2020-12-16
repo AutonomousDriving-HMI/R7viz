@@ -18,6 +18,7 @@ const PEDESTRIAN_STREAM = '/objects/shape/pedestrian'
 const ARROW_STREAM = '/objects/direction/arrow'
 const LINELIST_STREAM = 'objects/shape/linelist'
 const TEXT_STREAM = '/labal'
+
 const OBJECT_VELOCITY_STREAM = '/objects/information'
 
 //transform standard
@@ -75,7 +76,9 @@ function velocitylimit(velocity_x,velocity_y,scale,velocity) {
 }
 
 function build_CubeBox(marker, xvizBuilder, i) {
-    var object_id = [VECHILE_STREAM, i].join('/');
+    var text = class_labeling(marker.obj_class.toString())
+    var object_id = [VECHILE_STREAM, text ,i].join('/');
+    console.log(object_id)
     var object_height = marker.scale.z;
     const BoundingBox = TranformVertices(marker)
 
@@ -95,8 +98,9 @@ function build_CubeBox(marker, xvizBuilder, i) {
         .text(object_id)
 }
 
-function build_Cylinder(marker, xvizBuilder) {
-    var object_id = [PEDESTRIAN_STREAM, marker.id].join('/');
+function build_Cylinder(marker, xvizBuilder,i) {
+    var text = class_labeling(marker.obj_class.toString())
+    var object_id = [PEDESTRIAN_STREAM, text, i].join('/');
     var object_height = marker.scale.z;
     const Cylinder = CylinderVertices(marker)
 
@@ -125,7 +129,7 @@ function build_Arrow(marker, xvizBuilder) {
                 stroke_color: '#FF0000', //red
                 stroke_width: 0.1
             })
-}
+        }
 
 function build_LineList(marker, xvizBuilder) {
     //console.log(marker.points[0])
@@ -295,6 +299,27 @@ function _mapPoints(points, pose) {
         .toArray();
     });
   }
+
+function class_labeling(obj_class) {
+    var class_label
+    if (obj_class == '0') {
+        class_label = 'UNKNOWN'
+    } else if (obj_class == '1') {
+        class_label = 'CAR'
+    } else if (obj_class == '2') {
+        class_label = 'TRUCK'
+    } else if (obj_class == '3') {
+        class_label = 'BUS'
+    } else if (obj_class == '4') {
+        class_label = 'BICYCLE'
+    } else if (obj_class == '5') {
+        class_label = 'MOTORBIKE'
+    } else if (obj_class == '6') {
+        class_label = 'PEDESTRIAN'
+    } else if (obj_class == '7') {
+        class_label = 'ANIMAL'
+    }
+}
 
 //is will change
 function velocityPreprocessing_marker(points, origin_obj_yaw) {
