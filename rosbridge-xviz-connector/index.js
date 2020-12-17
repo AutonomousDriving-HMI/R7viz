@@ -49,7 +49,7 @@ let pointcloud = null;
 //name :'/filter/twist'
 
 const rosBridgeClient = new ROSLIB.Ros({
-    url : 'ws://192.168.1.21:9090'
+    url : 'ws://localhost:9090'
 });
 
 // for car location in (latitude and longitude) or (X,Y,Z : UTM)
