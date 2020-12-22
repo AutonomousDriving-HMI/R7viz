@@ -23,18 +23,18 @@ export default class ControlPanel extends React.PureComponent {
           </a>
         </div>
         <hr />
-        {/*<XVIZPanel log={log} name="Camera" />*/}
-        {<img src="" id="camera-image" width="100%" />}
+        {<XVIZPanel log={log} name="Camera" />}
+        {/*<img src="" id="camera-image" width="100%" />*/}
         <hr />
-        <XVIZPanel
+        {/*<XVIZPanel
           log={log}
           name="Metrics"
         //style={XVIZ_PANEL_STYLE}
-        />
+        />*/}
         <hr />
-        <DelayInfo log={log} state={state} />
+        {<DelayInfo log={log} state={state} />}
         <hr />
-        <SteeringInfo log={log} state={state} />
+        {/*<SteeringInfo log={log} state={state} />*/}
         <hr />
         <Form
           data={APP_SETTINGS}
@@ -55,7 +55,7 @@ export default class ControlPanel extends React.PureComponent {
         <hr />
         <Button onClick={onClick}>
           Re-Connect
-          </Button>
+        </Button>
       </div>
     );
   }

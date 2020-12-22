@@ -90,42 +90,6 @@ const exampleLog = new XVIZLiveLoader(
   maxConcurrency: 3
 });
 
-/**************************************************************************** */
-import {_XVIZLoaderInterface as XVIZLoaderInterface} from 'streetscape.gl';
-import {XVIZStreamBuffer, StreamSynchronizer} from '@xviz/parser';
-
-function getMetadata(options) {
-  // returns promise that resolves to metadata
-}
-
-function getTimeslices(options, callback) {
-  // invokes callback when each timeslice is loaded
-  // returns promise that resolves when done
-}
-
-class MyLoader extends XVIZLoaderInterface {
-  connect() {
-    const streamBuffer = new XVIZStreamBuffer();
-    this.streamBuffer = streamBuffer;
-
-    getMetadata(this.options)
-      .then(metadata => {
-        this._onXVIZMessage(metadata);
-      })
-      .then(() =>
-        getTimeslices(this.options, timeslice => {
-          this._onXVIZMessage(timeslice);
-        })
-      )
-      .then(() => this.emit('done'))
-      .catch(error => this.emit('error', error));
-  }
-
-  close() {}
-}
-/**************************************************************************** */
-
-
 class Example extends PureComponent {
   state = {
     //log: exampleLog.on('error', console.error),
@@ -137,6 +101,8 @@ class Example extends PureComponent {
     serverURL: server,
     mapToken: mapboxToken,
     mapStyle: mapStyleRef,
+
+    frontupdatetime : 1.0,
 
     /**Debug 하기 위한 state */
     panels: [],
@@ -166,12 +132,11 @@ class Example extends PureComponent {
 
 
       .on('update', () => {
-        console.log("update",new Date().getTime());
-
+        //console.log("update", new Date().getTime());
+        this.setState({
+          frontupdatetime: new Date().getTime()
+        })
       })
-
-
-      
       .connect();
 
     this.xvizWorkerMonitor = new XVIZWorkersMonitor({

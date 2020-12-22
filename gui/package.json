@@ -3,7 +3,7 @@
   "description": "A template app of streetscape.gl",
   "version": "0.1.0",
   "scripts": {
-    "start": "webpack-dev-server --progress --hot --port 8009 --host 0.0.0.0",
+    "start": "webpack-dev-server --progress --hot --open",
     "build": "webpack --config webpack.config.js && cp mapbox-gl.css index.html dist/ && node --max_old_space_size=8096 scripts/build.js"
   },
   "dependencies": {

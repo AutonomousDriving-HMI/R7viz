@@ -375,11 +375,8 @@ function tryServeFrame(){
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
             //_locationCache = null;
-            _lidarCache = null;
+            //_lidarCache = null;
         });
-        if(count < 20)
-            console.log(new Date().getTime());
-
     }
     return;
 }
