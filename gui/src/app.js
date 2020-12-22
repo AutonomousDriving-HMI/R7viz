@@ -48,6 +48,7 @@ import { UI_THEME } from './custom_styles'
 import MapView from './mapview';
 import HUD from './hud';
 import './stylesheets/main.scss';
+import ROSLIB from 'roslib'
 setXVIZConfig(XVIZ_CONFIG);
 
 let params = (new URL(document.location)).searchParams;
@@ -66,7 +67,19 @@ if (!mapStyleRef) {
   mapStyleRef = 'mapbox://styles/gwangryul/ckie4iw233aw219pcgdxl213q';    //navigation map
 }
 
-const exampleLog = new XVIZLiveLoader({
+const rosBridgeClient = new ROSLIB.Ros({
+  url : 'ws://'+server+':9090'
+});
+const roslistener = new ROSLIB.Topic({
+  ros : rosBridgeClient,
+  name : '/usb_cam/image_compressed/compressed'
+});
+roslistener.subscribe(function(message) {
+  document.getElementById("camera-image").src = "data:image/jpg;base64,"+message.data;
+});
+
+const exampleLog = new XVIZLiveLoader(
+  {
   logGuid: 'mock',
   bufferLength: 8,
   serverConfig: {
@@ -76,6 +89,42 @@ const exampleLog = new XVIZLiveLoader({
   worker: true,
   maxConcurrency: 3
 });
+
+/**************************************************************************** */
+import {_XVIZLoaderInterface as XVIZLoaderInterface} from 'streetscape.gl';
+import {XVIZStreamBuffer, StreamSynchronizer} from '@xviz/parser';
+
+function getMetadata(options) {
+  // returns promise that resolves to metadata
+}
+
+function getTimeslices(options, callback) {
+  // invokes callback when each timeslice is loaded
+  // returns promise that resolves when done
+}
+
+class MyLoader extends XVIZLoaderInterface {
+  connect() {
+    const streamBuffer = new XVIZStreamBuffer();
+    this.streamBuffer = streamBuffer;
+
+    getMetadata(this.options)
+      .then(metadata => {
+        this._onXVIZMessage(metadata);
+      })
+      .then(() =>
+        getTimeslices(this.options, timeslice => {
+          this._onXVIZMessage(timeslice);
+        })
+      )
+      .then(() => this.emit('done'))
+      .catch(error => this.emit('error', error));
+  }
+
+  close() {}
+}
+/**************************************************************************** */
+
 
 class Example extends PureComponent {
   state = {
@@ -98,7 +147,6 @@ class Example extends PureComponent {
     dropped: 'NA',
     workers: {}
   };
-
   componentDidMount() {
     /**토론토 대학에서 정의한 componentDidmount */
     //this.state.log.connect();
@@ -108,11 +156,22 @@ class Example extends PureComponent {
     log
       .on('ready', () => {
         const metadata = log.getMetadata();
+        console.log("get data");
+        console.log("ready", new Date().getTime());
         this.setState({
           panels: Object.keys((metadata && metadata.ui_config) || {})
         });
       })
       .on('error', console.error)
+
+
+      .on('update', () => {
+        console.log("update",new Date().getTime());
+
+      })
+
+
+      
       .connect();
 
     this.xvizWorkerMonitor = new XVIZWorkersMonitor({
@@ -173,11 +232,10 @@ class Example extends PureComponent {
   }
   render() {
     const { log, settings, mapStyle, mapToken, panels } = this.state;
-    console.log(log);
+    //console.log(log);
     return (
       <div id="container">
         <div id="control-panel">
-          {this._renderPerf() /*FPS moudle*/ }    
           {
             <ControPanel
               log={log}
@@ -188,6 +246,7 @@ class Example extends PureComponent {
               onClick={this._onButtonClick}
             />
           }
+          {this._renderPerf() /*FPS moudle*/ }    
         </div>
         <div id="log-panel">
           <div id="map-view">

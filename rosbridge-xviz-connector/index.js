@@ -83,11 +83,12 @@ const listener6 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   name : '/points_raw'
 });
+/*
 // for camera image
 const listener7 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   name : '/usb_cam/image_raw'
-});
+});*/
 
 // for obstacle information(type visual_marker_array)
 const listener8 = new ROSLIB.Topic({
@@ -104,11 +105,12 @@ const listener10 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   name : '/global_waypoints_rviz'
 });
+/*
 const listener11 = new ROSLIB.Topic({
   ros : rosBridgeClient,
   name : '/usb_cam/image_compressed/compressed'
 });
-
+*/
 xvizServer.startListenOn(8081);
 
 process.on('SIGTERM', gracefulShutdown);      //is not supported on Windows
@@ -306,13 +308,13 @@ listener9.subscribe(function (message){
 listener10.subscribe(function(message) {
   localPath_marker = message.markers
 });
-
+/*
 listener11.subscribe(function (message){
   const data_ = toUint8Array(message.data)
   const data = Buffer.from(data_);
   const format = message.format;
   xvizServer.updateCompressedImage(data, format)
-})
+})*/
 
 function gracefulShutdown() {
   console.log("shutting down rosbridge-xviz-connector");
@@ -322,10 +324,11 @@ function gracefulShutdown() {
   listener4.unsubscribe();
   listener5.unsubscribe();
   listener6.unsubscribe();
-  listener7.unsubscribe();
+  //listener7.unsubscribe();
   listener8.unsubscribe();
   listener9.unsubscribe();
-  listener10.unsubscribe();
+  //listener10.unsubscribe();
+  //listener11.unsubscribe();
 
   rosBridgeClient.close();
   xvizServer.close();

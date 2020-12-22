@@ -57,7 +57,7 @@ function define_RelativeTransform(marker) {
         roll:  Number(marker.orientation.roll),
         pitch: Number(marker.orientation.pitch),
         //yaw: Number(marker.velocity.velocity_yaw)
-        yaw: Number(marker.orientation.yaw+3.14)
+        yaw: Number(marker.orientation.yaw_)
         //pitch: Number(marker.orientation.car_pitch + marker.orientation.pitch+1.57),
         //roll: Number(marker.orientation.car_roll + marker.orientation.roll+1.57)
     }
@@ -75,7 +75,8 @@ function velocitylimit(velocity_x,velocity_y,scale,velocity) {
 }
 
 function build_CubeBox(marker, xvizBuilder, i) {
-    var object_id = [VECHILE_STREAM, i].join('/');
+    var object_label = class_name(marker.object_class)
+    var object_id = [VECHILE_STREAM,object_label, i].join('/');
     var object_height = marker.scale.z;
     const BoundingBox = TranformVertices(marker)
 
@@ -205,10 +206,10 @@ function TranformVertices(marker) {
                           [transform_coord[0].x + trans3[0].x, transform_coord[0].y + trans3[0].y, 0],
                           [transform_coord[0].x + trans4[0].x, transform_coord[0].y + trans4[0].y, 0]]
     */
-    transform_vertices = [[transform_coord[0].x + Trans1[0].x, transform_coord[0].y + Trans1[0].y, 0],
-                          [transform_coord[0].x + Trans2[0].x, transform_coord[0].y + Trans2[0].y, 0],
-                          [transform_coord[0].x + Trans3[0].x, transform_coord[0].y + Trans3[0].y, 0],
-                          [transform_coord[0].x + Trans4[0].x, transform_coord[0].y + Trans4[0].y, 0]]
+    transform_vertices = [[transform_coord[0].x + Trans1[0].x, transform_coord[0].y + Trans1[0].y, transform_coord.z],
+                          [transform_coord[0].x + Trans2[0].x, transform_coord[0].y + Trans2[0].y, transform_coord.z],
+                          [transform_coord[0].x + Trans3[0].x, transform_coord[0].y + Trans3[0].y, transform_coord.z],
+                          [transform_coord[0].x + Trans4[0].x, transform_coord[0].y + Trans4[0].y, transform_coord.z]]
 
     return { label_position, transform_vertices }   //vertices}
 }
@@ -234,13 +235,13 @@ function CylinderVertices(marker) {
 
 function _makeArrow(marker,xvizBuilder) {
     const arrow_maker = {
-        scale: 1.8, ///
+        scale: 1, ///
         ptr_axis: Math.PI / 18, //=degree :10
         ptr_scale: 0.9,
         point2: 0.9
     }
-    const origin = new math.Vector3([marker.vertices.x, marker.vertices.y,0])// marker.vertices.z])
-    const endofVec = velocitylimit(marker.velocity.dir_arrow[1].x, marker.velocity.dir_arrow[1].y, 3.6, marker.velocity.abs_velocity);
+    const origin = new math.Vector3([marker.vertices.x, marker.vertices.y,marker.vertices.z])
+    const endofVec = velocitylimit(marker.velocity.dir_arrow[1].x, marker.velocity.dir_arrow[1].y, arrow_maker.scale, marker.velocity.abs_velocity);
     //const pcross = endofVec.clone()
     const leftPtr = endofVec.clone().scale(arrow_maker.ptr_scale).rotateZ({ radians: -arrow_maker.ptr_axis });
     const rightPtr = endofVec.clone().scale(arrow_maker.ptr_scale).rotateZ({ radians: arrow_maker.ptr_axis });
@@ -295,6 +296,27 @@ function _mapPoints(points, pose) {
         .toArray();
     });
   }
+function class_name(obj_class){
+    var obj_name;
+    if (obj_class == 0){
+        obj_name = "UNKNOWN"
+    }else if(obj_class == 1){
+        obj_name = "CAR"
+    }else if(obj_class == 2){
+        obj_name = "TRUCK"
+    }else if(obj_class == 3){
+        obj_name = "BUS"
+    }else if(obj_class == 4){
+        obj_name = "BICYCLE"
+    }else if(obj_class == 5){
+        obj_name = "MOTORBIKE"
+    }else if(obj_class == 6){
+        obj_name = "PEDESTRIAN"
+    }else if(obj_class == 7){
+        obj_name = "ANIMAL"
+    }
+    return obj_name;
+}
 
 //is will change
 function velocityPreprocessing_marker(points, origin_obj_yaw) {

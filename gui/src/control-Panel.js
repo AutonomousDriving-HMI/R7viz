@@ -2,6 +2,7 @@ import React from 'react';
 import {XVIZPanel, StreamSettingsPanel} from 'streetscape.gl';
 import {Form, Button } from '@streetscape.gl/monochrome';
 import SteeringInfo from './steering-info';
+import DelayInfo from './delay_check-info'
 import { XVIZ_CONFIG, APP_SETTINGS, CONFIG_SETTINGS} from './constants';
 
 export default class ControlPanel extends React.PureComponent {
@@ -22,13 +23,16 @@ export default class ControlPanel extends React.PureComponent {
           </a>
         </div>
         <hr />
-        <XVIZPanel log={log} name="Camera" />
+        {/*<XVIZPanel log={log} name="Camera" />*/}
+        {<img src="" id="camera-image" width="100%" />}
         <hr />
         <XVIZPanel
           log={log}
           name="Metrics"
         //style={XVIZ_PANEL_STYLE}
         />
+        <hr />
+        <DelayInfo log={log} state={state} />
         <hr />
         <SteeringInfo log={log} state={state} />
         <hr />

@@ -10,9 +10,8 @@ const { Z_BLOCK } = require('zlib');
 const {Vector3,_Pose} = require('math.gl')
 const math = require('math.gl');
 const { format } = require('path');
-
+    
 var count = 0;
-const lidar_hz = 1;
 
 
 //import {OBJECT_PALATTE} from '../gui/src/src/custom_styles.js';
@@ -36,6 +35,8 @@ const PEDESTRIAN_STREAM = '/objects/shape/pedestrian'
 const ARROW_STREAM = '/objects/direction/arrow'
 const LINELIST_STREAM = 'objects/shape/linelist'
 const LOCALPATH_STREAM = '/objects/localpath'
+
+const DELAY_CHECK_STREAM = '/delay/millisecond'
 
 // object info name space
 const TEXT_STREAM = '/labal'
@@ -191,7 +192,12 @@ xvizMetaBuider
     .stream(OBJECT_HEADING_STREAM)
     .category('time_series')
     .type('float')
-    .unit('radian');
+    .unit('radian')
+
+    .stream(DELAY_CHECK_STREAM)
+    .category('time_series')
+    .type('float')
+    .unit('m/s')
 
 xvizUIBuilder.child( xvizUIBuilder.panel({name: 'Camera'}) ).child( xvizUIBuilder.video({cameras:[CAMERAIMAGE_STREAM]}) );
 //xvizMetaBuider.ui(xvizUIBuilder);
@@ -302,18 +308,23 @@ function tryServeFrame(){
             .mapOrigin(_locationCache.longitude, _locationCache.latitude, 0)
             .position(0,0,0)
             //.orientation(0,0,_locationCache.yaw+ 3.141592);
-            .orientation(_locationCache.roll,_locationCache.pitch,_locationCache.yaw);
+            .orientation(_locationCache.roll, _locationCache.pitch, _locationCache.yaw);
         xvizBuilder.timeSeries(VELOCITY_STREAM)
-        .timestamp(_locationCache.timestamp)
+            .timestamp(_locationCache.timestamp)
             .value(_locationCache.x_dir_velocity);
-        
+
         xvizBuilder.timeSeries(ACCELERATION_STREAM)
-        .timestamp(_locationCache.timestamp)
+            .timestamp(_locationCache.timestamp)
             .value(_locationCache.x_dir_accelation);
 
         xvizBuilder.timeSeries(STEERING_STREAM)
-        .timestamp(_locationCache.timestamp)
+            .timestamp(_locationCache.timestamp)
             .value(_locationCache.degree_of_steering);
+
+        xvizBuilder.timeSeries(DELAY_CHECK_STREAM)
+            .timestamp(_locationCache.timestamp)
+            .value(new Date().getTime());
+
 
         if (_trajectoryCache) {
             xvizBuilder.primitive(LOCALPATH_STREAM).polyline(_trajectoryCache);
@@ -334,7 +345,6 @@ function tryServeFrame(){
                 image(nodeBufferToTypedArray(_cameraImageCache.image_data), _cameraImageCache.format)
         }
         //Gwang - add lidar XvizBuilder
-        if (count == lidar_hz) {
             if (_lidarCache) {
                 xvizBuilder
                     .primitive(POINTCLOUD_STREAM)
@@ -343,8 +353,6 @@ function tryServeFrame(){
                     //.ids(_lidarCache.ids)
                     .style({ fill_color: '#00ff00aa' });
                 //.colors(_lidarCache.colors)
-            }
-            count = 0;
         }/*
         //console.log(xvizBuilder.getMessage());
         const xvizFrame = encodeBinaryXVIZ(xvizBuilder.getFrame(), {});
@@ -363,11 +371,15 @@ function tryServeFrame(){
         //const xvizFrame = JSON.stringify(xvizBuilder.getFrame());
         //console.log(xvizFrame);
         count = count + 1;
+        //console.log(count);
         _connectionMap.forEach((context, connectionId, map) => {
             context.sendFrame(xvizFrame);
             //_locationCache = null;
             _lidarCache = null;
         });
+        if(count < 20)
+            console.log(new Date().getTime());
+
     }
     return;
 }
