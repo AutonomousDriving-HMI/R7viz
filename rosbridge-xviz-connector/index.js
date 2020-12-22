@@ -3,15 +3,16 @@ const xvizServer = require('./xviz-server');
 const Parser = require('binary-parser').Parser;
 const parser = new Parser().floatle();
 const toUint8Array = require('base64-to-uint8array')
-const utmConverter = require('utm-latlng');
+
 const {Vector3,_Euler} = require('math.gl')
 const _ = require('lodash')
 var math = require("math.gl");
 
-const ImageConverter = require("./XVIZ_Converter/xviz-image_converter")
-const LidarConverter = require("./XVIZ_Converter/xviz-lidar_converter")
-const ObjConveter= require('./XVIZ_Converter/xviz-object_converter')
-const Calculator = require("./Calculator")
+const VehiclePoseConverter = require("./XVIZ_Converter/xviz-vehiclepose_converter");
+const ImageConverter = require("./XVIZ_Converter/xviz-image_converter");
+const LidarConverter = require("./XVIZ_Converter/xviz-lidar_converter");
+const ObjConveter= require('./XVIZ_Converter/xviz-object_converter');
+const Calculator = require("./Calculator");
 
 const object_transform_helper = require('./XVIZ_Converter/xviz-object_coordinate_transform')
 //global variable
@@ -33,10 +34,6 @@ let latitude = null;
 let roll = null;
 let yaw = null;
 let pitch = null;
-// car status data
-let x_dir_velocity = 0;
-let x_dir_acl = 0;
-let steering_degree = 0;
 
 let pointcloud = null;
 //location name space//
@@ -55,62 +52,35 @@ const rosBridgeClient = new ROSLIB.Ros({
 // for car location in (latitude and longitude) or (X,Y,Z : UTM)
 const listener = new ROSLIB.Topic({
     ros : rosBridgeClient,
-    name : '/current_pose'
+    //name : '/current_pose'
+    name : '/xviz/ego_vehicle'
+    //type : 'dgist_msgs/xviz_ego_vehicle'
+    //custom : pose + velocity + accleration + steering + utm offset
 });
-// for car location in UTM coordinate and orientation
+
+// Sensor
+// for front Camera Compressed Images
 const listener2 = new ROSLIB.Topic({
   ros : rosBridgeClient,
-  name : '/vehicle/imu/data_raw '
+  name : '/xviz/front_cam'
+  //type : 'sensor_msgs/CompressedImage' //(Camera)
 });
 
-// for car forward x velocity (TwistStamped based)
+// for LiDAR PointCloud
 const listener3 = new ROSLIB.Topic({
   ros : rosBridgeClient,
-  name : '/vehicle/twist'
-
+  name : '/xviz/points_raw'
+  //type : 'sensor_msgs/PointCloud2' //(pointcloud)
 });
-// for car acceleration
+
+// Object
+// for LiDAR Object Detection 
 const listener4 = new ROSLIB.Topic({
   ros : rosBridgeClient,
-  name : '/vehicle/filtered_accel'
-});
-// for car Steering angle (dbw_mkz_msgs/SteeringReport)
-const listener5 = new ROSLIB.Topic({
-  ros : rosBridgeClient,
-  name : '/vehicle/steering_report'
-});
-const listener6 = new ROSLIB.Topic({
-  ros : rosBridgeClient,
-  name : '/points_raw'
-});
-/*
-// for camera image
-const listener7 = new ROSLIB.Topic({
-  ros : rosBridgeClient,
-  name : '/usb_cam/image_raw'
-});*/
-
-// for obstacle information(type visual_marker_array)
-const listener8 = new ROSLIB.Topic({
-  ros : rosBridgeClient,
-  name : '/detection/lidar_tracker/objects/visualization'
-});
-const listener9 = new ROSLIB.Topic({
-  ros : rosBridgeClient,
-  name : '/detection/lidar_tracker/objects'
+  name : '/xviz/lidar_objects'
+  //type : 'dgist_msgs/xviz_lidar_object' //(custom : object + coordinate)
 });
 
-// for planned path in UTM coordinate
-const listener10 = new ROSLIB.Topic({
-  ros : rosBridgeClient,
-  name : '/global_waypoints_rviz'
-});
-/*
-const listener11 = new ROSLIB.Topic({
-  ros : rosBridgeClient,
-  name : '/usb_cam/image_compressed/compressed'
-});
-*/
 xvizServer.startListenOn(8081);
 
 process.on('SIGTERM', gracefulShutdown);      //is not supported on Windows
@@ -134,12 +104,7 @@ listener.subscribe(function (message) {
 
     //car current pose (global map UTM pose)
     car_pos_utm = message.pose.position
-    let {x,y,z} = car_pos_utm;
-    
-    //GPS converter UTM => WGS
-    let wgs84_data = utmobj.convertUtmToLatLng(x+450850,y+3951350,52,'S');
-    //let wgs84_data = utmobj.convertUtmToLatLng(450850,951350,52,'S');
-    let {lat,lng} = wgs84_data
+    var {latitude,longitude,altitude} = VegetXVIZVehiclePose(message.coordinate,car_pos_utm)
     
     //car orientation (heading) 
     vehicle_heading_list = Calculator.QuaternionToRoll_Pitch_Yaw(message.pose.orientation)
@@ -147,6 +112,10 @@ listener.subscribe(function (message) {
     pitch = vehicle_heading_list[1]
     yaw = vehicle_heading_list[2]
     
+    //vehicle status
+    var velocity = message.twist.linear.x *3.6 // m/s -> km/h
+    var acceleration = message.acceleration.linear.x
+    var steering_degree = Calculator.radToDegree(message.steering)
     //local path define
     /*if(localPath_marker){
       localPath = [];
@@ -165,7 +134,7 @@ listener.subscribe(function (message) {
         xvizServer.updateCarPath(null);
       }
     }*/
-    xvizServer.updateLocation(lat, lng, z, roll, pitch, yaw, x_dir_velocity ,steering_degree, x_dir_acl, parseFloat(timestamp));
+    xvizServer.updateLocation(latitude, longitude, altitude, roll, pitch, yaw, velocity ,steering_degree, acceleration, parseFloat(timestamp));
     /*
     if you use another ROS Topic use this
     //mkz_rosbag - filer postionlla
@@ -178,33 +147,8 @@ listener.subscribe(function (message) {
     */
   });
 
-/*
-//listener 2 is the orientation of the car, location in UTM and orientation
-listener2.subscribe(function (message) {
-  //let orientation = message.pose.pose.orientation;
-  vehicle_heading_list = Calculator.QuaternionToRoll_Pitch_Yaw(message.orientation);
-  roll = vehicle_heading_list[0]
-  pitch = vehicle_heading_list[1]
-  yaw = vehicle_heading_list[2]
-});*/
-
-//TwistStamped
-listener3.subscribe(function (message){
-  var velocity = message.twist.linear
-  velocity = ObjConveter.velocityPostProcessing(velocity)
-  x_dir_velocity = velocity.x * 3.6; // m/s -> km/h
-});
-//fillered accel
-listener4.subscribe(function (message){
-  x_dir_acl = message.data;
-});
-//SteeringReport
-listener5.subscribe(function (message){
-  steering_degree = Calculator.radToDegree(message.steering_wheel_angle)
-});
-
 //lidar sensor에 대한 xviz converter를 정의하는 function
-listener6.subscribe(function (message){
+listener3.subscribe(function (message){
   pointcloud = message.is_dense;
   var load_lidar_data_return = []
   load_lidar_data_return = LidarConverter.load_lidar_data(message)
@@ -213,14 +157,58 @@ listener6.subscribe(function (message){
   //var pointSize = load_lidar_data_return[1];
   xvizServer.updateLidar(positions, colors);
 })
+
+
+
+//LiDAR Object detection // msg type: autoware_perception msg 
+listener4.subscribe(function (message){
+  autoware_obstacles = []
+  for (let i = 0; i < message.objects.length; i++) {
+    let { id, label,velocity, dimensions, pose, coordinate} = message.objects[i];
+    let { x, y, z } = pose.position
+    let orientation_ = pose.orientation
+    let velocity = velocity.twist
+    var object_heading_list = Calculator.QuaternionToRoll_Pitch_Yaw(orientation_)
+    
+    if (car_pos_utm){
+      var velocity_obj = ObjConveter.velocityPreprocessing(velocity,object_heading_list[2])
+      var orientation = {
+        roll: object_heading_list[0],
+        pitch: object_heading_list[1],
+        yaw: velocity_obj.callback_yaw,
+        yaw_: object_heading_list[2],
+        car_yaw: yaw,
+        car_pitch : pitch,
+        car_roll : roll,
+      }
+      var autoware_obj = {
+        id: id,
+        vertices: new Vector3([x - car_pos_utm.x, y - car_pos_utm.y, 0]),
+        car_utm: car_pos_utm,
+        orientation: orientation,
+        object_class: label.type,
+        object_build: shape.type,
+        scale: dimensions,
+        velocity: velocity_obj
+      }
+      autoware_obstacles.push(autoware_obj);
+    }
+  }
+  if (autoware_obstacles.length > 0) {
+    xvizServer.updateObstacles(autoware_obstacles);
+  } else {
+    xvizServer.updateObstacles(null);
+  }
+});
+
 /*
 listener7.subscribe(function(message) {
   const data_ = toUint8Array(message.data)
   const data = Buffer.from(data_);
   //console.log(data)
   ImageConverter.createSharpImg(data);
-});*/
-/*
+});
+
 //LiDAR Object detection // msg type: maker_array msg 
 listener8.subscribe(function (message) {
   marker_obstacles=[]
@@ -262,10 +250,21 @@ listener8.subscribe(function (message) {
   } else {
     xvizServer.updateObstacles(null);
   }
-});*/
+});
 
-//LiDAR Object detection // msg type: autoware_perception msg 
-listener9.subscribe(function (message){
+listener10.subscribe(function(message) {
+  localPath_marker = message.markers
+});
+
+
+listener11.subscribe(function (message){
+  const data_ = toUint8Array(message.data)
+  const data = Buffer.from(data_);
+  const format = message.format;
+  xvizServer.updateCompressedImage(data, format)
+})
+
+listener4.subscribe(function (message){
   autoware_obstacles = []
   for (let i = 0; i < message.objects.length; i++) {
     let { id, shape, state, semantic} = message.objects[i];
@@ -303,18 +302,8 @@ listener9.subscribe(function (message){
   } else {
     xvizServer.updateObstacles(null);
   }
-});
+});*/
 
-listener10.subscribe(function(message) {
-  localPath_marker = message.markers
-});
-/*
-listener11.subscribe(function (message){
-  const data_ = toUint8Array(message.data)
-  const data = Buffer.from(data_);
-  const format = message.format;
-  xvizServer.updateCompressedImage(data, format)
-})*/
 
 function gracefulShutdown() {
   console.log("shutting down rosbridge-xviz-connector");
@@ -322,13 +311,6 @@ function gracefulShutdown() {
   listener2.unsubscribe();
   listener3.unsubscribe();
   listener4.unsubscribe();
-  listener5.unsubscribe();
-  listener6.unsubscribe();
-  //listener7.unsubscribe();
-  listener8.unsubscribe();
-  listener9.unsubscribe();
-  //listener10.unsubscribe();
-  //listener11.unsubscribe();
 
   rosBridgeClient.close();
   xvizServer.close();
