@@ -19,17 +19,17 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 - Language : Javascript, Html, Css, Ros-melodic
   
 ## 2. Key Features <a id="2"></a>
-1) Visualization of Camera Data
-2) Visualization of Lidar data
-3) Visualization of Velocity data
-4) Visualization of Acceleration Data
-5) Localization
-6) Direction of object
-7) Bounding box of object
-8) Data labeling of object
-9) HD Map
-10) Change View Mode
-11) Measurement of frame per second
+- Visualization of Camera Data
+- Visualization of Lidar data
+- Visualization of Velocity data
+- Visualization of Acceleration Data
+- Localization
+- Direction of object
+- Bounding box of object
+- Data labeling of object
+- HD Map
+- Change View Mode
+- Measurement of frame per second
 
 
 ## 7. References <a id="7"></a>
