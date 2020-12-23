@@ -8,7 +8,7 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 [1. Development Environment](#1)  
 [2. Key Features](#2)  
 [3. Diagram](#3)  
-[4. ](#4)  
+[4. Installing Dependecy](#4)  
 [5. ](#5)  
 [6. ](#6)  
 [7. References](#7)
@@ -48,7 +48,19 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 - Map Source Selection: module that allows you to specify map box token and map style
 - HD Map (GeoJson): DGIST's HD Map osm format files separated by lane and center line
 - Web UI: Web-based UI customizing Uber's open source Streetscape.gl
+  
+## 4. Installing Dependency <a id="4"></a>
+  
+1) ros-bridge
+```cmd
+$ sudo apt-get install ros-melodic-rosbridge-server
+$ source /opt/ros/melodic/setup.bash
+$ roslaunch rosbridge_server rosbridge_websocket.launch
+```
+2)
 
+
+  
 ## 7. References <a id="7"></a>
 - [AVS](https://avs.auto)
 - [XVIZ](https://github.com/uber/xviz)
