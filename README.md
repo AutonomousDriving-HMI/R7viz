@@ -15,3 +15,14 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 - GPU : GeForce GTX TITAN X
 - Tool : Visual Studio Code
 - Language : Javascript, Html, Css, Ros-melodic
+
+
+
+
+## 7. References <a id="7"></a>
+- [AVS](https://avs.auto)
+- [XVIZ](https://github.com/uber/xviz)
+- [Streetscape.gl](https://github.com/uber/streetscape.gl)
+- [Autoronto GUI](https://github.com/leonzz/argus-autoronto)
+- [Ford Autonomous Trucks HMI](https://github.com/aliekingurgen/ford-autonomous-vehicles-hmi)
+- [Rosbridge_suite](https://github.com/RobotWebTools/rosbridge_suite)
