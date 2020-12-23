@@ -117,7 +117,7 @@ $ cd ~/
 $ npm install @turf/turf
 ```
   
-## 5. Installing Dependency <a id="5"></a>
+## 5. Installing Package Scenario <a id="5"></a>
 1) git clone
 ```cmd
 $ cd
