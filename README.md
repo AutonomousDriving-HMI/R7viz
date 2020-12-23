@@ -1,10 +1,7 @@
-# AVS_Dgist
-# we make avs
+# R7viz
+R7viz is a protocol that integrates front-end & back-end, which show autonomous driving data in real time.
 
-# Dependencies
+## Overview 
+1. Development Environment
+2. 
 
-```
-cd ~/
- npm install base64-to-uint8array
- npm install sharp
-```
