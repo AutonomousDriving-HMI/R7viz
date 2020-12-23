@@ -20,7 +20,7 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 - RAM : 64GB
 - GPU : GeForce GTX TITAN X
 - Tool : Visual Studio Code
-- Language : Javascript, Html, Css, Ros-melodic
+- Language : Javascript, CSS, HTML, ros-melodic
   
 ## 2. Key Features <a id="2"></a>
 - Visualization of Camera Data
