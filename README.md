@@ -20,7 +20,7 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
   
 ## 2. Key Features <a id="2"></a>
 1) Visualization of Camera Data
-2. Visualization of Lidar data
+2) Visualization of Lidar data
 3) Localization
 4) Data labeling of object
 5) Bounding box of object
