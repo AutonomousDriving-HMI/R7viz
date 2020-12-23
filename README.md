@@ -57,7 +57,66 @@ $ sudo apt-get install ros-melodic-rosbridge-server
 $ source /opt/ros/melodic/setup.bash
 $ roslaunch rosbridge_server rosbridge_websocket.launch
 ```
-2)
+2) graphic-driver
+```cmd
+$ wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-repo-ubuntu1804_10.1.243-1_amd64.deb
+$ sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+$ sudo dpkg -i cuda-repo-ubuntu1804_10.1.243-1_amd64.deb
+$ sudo apt-get update   
+$ wget http://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb
+$ sudo apt install ./nvidia-machine-learning-repo-ubuntu1804_1.0.0-1_amd64.deb
+$ sudo apt-get update
+$ sudo apt-get install —no-install-recommends nvidia-driver-450
+$ reboot
+$ nvidia-smi
+```
+3) nodejs, npm
+```cmd
+$ sudo apt-get install build-essential libssl-dev
+$ curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+$ source ~/.bashrc
+$ nvm —version
+$ nvm install 10.16
+$ node --version
+$ npm —version
+```
+4) yarn
+```cmd
+$ curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+$ echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+$ sudo apt-get update && sudo apt-get install yarn
+```
+5) base64-to-uint8array
+```cmd
+$ cd ~/
+$ npm install base64-to-uint8array
+```
+6) sharp
+```cmd
+$ cd ~/
+$ npm install sharp
+```
+7) utm-latlng
+```cmd
+$ cd ~/
+$ npm install utm-latlng
+```
+8) math.gl
+```cmd
+$ cd ~/
+$ npm install math.gl
+```
+9) lodash
+```cmd
+$ cd ~/
+$ npm i -g npm
+$ npm i --save lodash
+```
+10) turf
+```cmd
+$ cd ~/
+$ npm install @turf/turf
+```
 
 
   
