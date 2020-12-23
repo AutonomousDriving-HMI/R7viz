@@ -36,8 +36,18 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 - Measurement of frame per second
 
 ## 3. Diagram <a id="3"></a>
+  
 ![alt 2번이미지](/photo/diagram_r7viz.png)
-
+  
+### Components
+- DGIST rosbag: a collection of sensor data obtained from DGIST self-driving vehicles
+- rosbridge server: web servers accepting rostopic
+- xviz converter: module that customizes the retrieved lostopic data in xviz format
+- rosbridge-xviz-connector: XVIZ protocol data proxy server produced by the University of Toronto, Canada
+- mapbox.com: Customizable Open Source Maps
+- Map Source Selection: module that allows you to specify map box token and map style
+- HD Map (GeoJson): DGIST created HD Maposm format files separated by lane and center line
+- Web UI: Web-based UI customizing Uber's open source Streetscape.gl
 
 ## 7. References <a id="7"></a>
 - [AVS](https://avs.auto)
