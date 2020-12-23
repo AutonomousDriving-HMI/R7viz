@@ -3,9 +3,11 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
   
 ![alt 2번이미지](/photo/diagram_r7viz.png)
 
+
 ## Overview 
 [1. Development Environment](#1)  
-2. 
+[2. Key Features](#2)
+[7. References](#7)
 
 ## 1. Development Environment <a id="1"></a>
 - OS : Ubuntu 18.04 LTS
@@ -15,8 +17,19 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 - GPU : GeForce GTX TITAN X
 - Tool : Visual Studio Code
 - Language : Javascript, Html, Css, Ros-melodic
-
-
+  
+## 2. Key Features <a id="2"></a>
+1) Visualization of Camera Data
+2. Visualization of Lidar data
+3) Localization
+4) Data labeling of object
+5) Bounding box of object
+6) Direction of object
+7) Visualization of Velocity data
+8) Visualization of Acceleration Data
+9) HD Map Visualization
+10) Change View Mode
+11) Measurement of frame per second
 
 
 ## 7. References <a id="7"></a>
