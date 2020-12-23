@@ -9,8 +9,8 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 [2. Key Features](#2)  
 [3. Diagram](#3)  
 [4. Installing Dependecy](#4)  
-[5. ](#5)  
-[6. ](#6)  
+[5. Installing Package Scenario](#5)  
+[6. Running Package Scenario](#6)  
 [7. References](#7)
 
 ## 1. Development Environment <a id="1"></a>
@@ -50,7 +50,6 @@ R7viz is a protocol that integrates front-end & back-end, which show autonomous 
 - Web UI: Web-based UI customizing Uber's open source Streetscape.gl
   
 ## 4. Installing Dependency <a id="4"></a>
-  
 1) ros-bridge
 ```cmd
 $ sudo apt-get install ros-melodic-rosbridge-server
@@ -117,8 +116,62 @@ $ npm i --save lodash
 $ cd ~/
 $ npm install @turf/turf
 ```
-
-
+  
+## 5. Installing Dependency <a id="5"></a>
+1) git clone
+```cmd
+$ cd
+$ https://github.com/AutonomousDriving-HMI/R7viz.git
+$ cd ~/R7viz
+$ cp -R morai_ws/ ~/
+```
+2) catkin_make & ros setting
+```cmd
+$ cd ~/morai_ws
+$ catkin_make
+$ source devel/setup.bash
+pwd를 통해 catkin_ws의 directory를 파악하여 bashrc daemon에 ros source를 추가한다.
+$ sudo nano ~/.bashrc
+마지막 줄로 이동한다.
+source $현재 자신의 디렉토리$/devel/setup.bash를 추가한다.
+해당 터미널을 종료하고 새로운 터미널에선 추가로 source devel/setup.bash를 안해도 된다.
+```
+3) XVIZ package
+```cmd
+$ cd <R7viz directory>
+$ cd rosbridge-xviz-connector
+$ yarn
+```
+4) GUI package
+```cmd
+$ cd <R7viz directory>
+$ cd gui
+$ yarn
+```
+## 6. Running Package Scenario <a id="6"></a>
+1) rosbridge launch
+```cmd
+$ roslaunch rosbridge_server rosbridge_websocket
+```
+2) rosbag play
+```cmd
+$ cd <rosbag directory>
+$ rosbag play <rosbag filename>
+```
+3) running converter 
+```cmd
+$ rosrun image_transport republish raw in:=/usb_cam/image_raw compressed out:=/usb_cam/image_compressed
+```
+4) running XVIZ
+```cmd
+$ cd <R7viz directory>/rosbridge-xviz-connector
+$ yarn start
+```
+5) running GUI
+```cmd
+$ cd <R7viz directory>/gui
+$ yarn start
+```
   
 ## 7. References <a id="7"></a>
 - [AVS](https://avs.auto)
