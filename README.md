@@ -7,7 +7,7 @@ Video (Testing on rosbag) :
   
 Video (Testing on Ipad) :  
   
-[![IMAGE ALT TEXT](/photo/ipad_capture.PNG )](http://www.youtube.com/watch?v=iMz-QFy0sWc"Click to play on Youtube Video")
+[![IMAGE ALT TEXT](/photo/ipad_capture.PNG )](http://www.youtube.com/watch?v=iMz-QFy0sWc "Click to play on Youtube Video")
 
 
 ## Overview 
