@@ -1,7 +1,13 @@
 # R7viz
 R7viz is a protocol that integrates front-end & back-end, which show autonomous driving data in real time.
   
-
+Video (Testing on rosbag) :  
+  
+[![IMAGE ALT TEXT](/photo/r7viz_capture.PNG)](http://www.youtube.com/watch?v=P9XaBmR8r5Q "Click to play on Youtube Video")
+  
+Video (Testing on Ipad) :  
+  
+[![IMAGE ALT TEXT](/photo/ipad_capture.PNG )](http://www.youtube.com/watch?v=iMz-QFy0sWc"Click to play on Youtube Video")
 
 
 ## Overview 
